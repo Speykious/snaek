@@ -1,8 +1,15 @@
+// TODO: remove this thing as soon as possible
+#![allow(unused)]
+
 use std::error::Error;
 use std::time::Duration;
 
 use minifb::{Key, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
+
+mod ui;
+mod render;
+mod snake;
 
 const WIDTH: usize = 97;
 const HEIGHT: usize = 124;
