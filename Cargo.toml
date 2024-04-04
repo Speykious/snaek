@@ -1,0 +1,8 @@
+[package]
+name = "snaek"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+minifb = "0.25.0"
+owo-colors = "4.0.0"
