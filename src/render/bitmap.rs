@@ -1,3 +1,4 @@
+use super::pixel::alphacomp::AlphaCompFn;
 use super::pixel::Pixel;
 use super::{pos, Pos, Rect, Size};
 
@@ -76,14 +77,17 @@ impl Bitmap {
         }
     }
 
-    pub fn clear(&mut self, pixel: Pixel) {
-        self.data.fill(pixel.to_u32());
+    pub fn fill(&mut self, pixel: Pixel, acf: AlphaCompFn) {
+        for px in &mut self.data {
+            *px = (acf)(Pixel::from_hex(*px), pixel).to_u32();
+        }
     }
 
-    pub fn clear_area(&mut self, pixel: Pixel, rect: Rect) {
-        let pixel = pixel.to_u32();
+    pub fn fill_area(&mut self, pixel: Pixel, rect: Rect, acf: AlphaCompFn) {
         for y in 0..rect.h as i16 {
-            self.line_mut(pos(rect.x, rect.y + y), rect.w).fill(pixel);
+            for px in self.line_mut(pos(rect.x, rect.y + y), rect.w) {
+                *px = (acf)(Pixel::from_hex(*px), pixel).to_u32();
+            }
         }
     }
 

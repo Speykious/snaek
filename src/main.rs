@@ -7,7 +7,7 @@ use std::time::Duration;
 use minifb::{Key, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::bitmap::Bitmap;
-use render::pixel::Pixel;
+use render::pixel::{alphacomp, Pixel};
 use render::{size, Rect};
 
 mod render;
@@ -43,7 +43,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 
     let mut window = Window::new("Snaek", WIDTH as usize, HEIGHT as usize, options)?;
 
-    window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 15)));
+    window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 60)));
 
     let mut bounce = Rect::from_xywh(WIDTH as i16 / 2, HEIGHT as i16 / 2, 10, 10);
 
@@ -71,8 +71,8 @@ fn game() -> Result<(), Box<dyn Error>> {
         bounce.y += dy;
 
         // drawing
-        buffer.clear(Pixel::from_hex(0x262b44));
-        buffer.clear_area(Pixel::from_hex(0xff0051), bounce);
+        buffer.fill(Pixel::from_hex(0x262b44), alphacomp::over);
+        buffer.fill_area(Pixel::from_hex(0x80ff0051), bounce, alphacomp::over);
 
         window
             .update_with_buffer(buffer.pixels(), WIDTH as usize, HEIGHT as usize)

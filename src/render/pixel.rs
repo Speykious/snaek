@@ -130,12 +130,16 @@ pub mod alphacomp {
 
     use super::Pixel;
 
+	/// An alpha composition function.
+	pub type AlphaCompFn = fn(Pixel, Pixel) -> Pixel;
+
     #[inline]
     pub fn over(pixa: Pixel, pixb: Pixel) -> Pixel {
         let a = (pixa.a as u32 + pixb.a as u32 * (255 - pixa.a as u32)) as u8;
-        let r = ((pixa.r as u32 + pixb.r as u32 * (255 - pixa.a as u32)) / a as u32) as u8;
-        let g = ((pixa.g as u32 + pixb.g as u32 * (255 - pixa.a as u32)) / a as u32) as u8;
-        let b = ((pixa.b as u32 + pixb.b as u32 * (255 - pixa.a as u32)) / a as u32) as u8;
+		let a0 = a.max(1);
+        let r = ((pixa.r as u32 + pixb.r as u32 * (255 - pixa.a as u32)) / a0 as u32) as u8;
+        let g = ((pixa.g as u32 + pixb.g as u32 * (255 - pixa.a as u32)) / a0 as u32) as u8;
+        let b = ((pixa.b as u32 + pixb.b as u32 * (255 - pixa.a as u32)) / a0 as u32) as u8;
         Pixel { a, r, g, b }
     }
 
