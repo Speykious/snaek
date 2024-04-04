@@ -102,6 +102,6 @@ impl Bitmap {
             "Position exceeds bitmap height"
         );
 
-        pos.y as usize * self.size.w as usize * pos.x as usize
+        pos.y as usize * self.size.w as usize + pos.x as usize
     }
 }
