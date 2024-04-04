@@ -1,4 +1,5 @@
 pub mod bitmap;
+pub mod pixel;
 
 /// Position of something on the bitmap, in pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

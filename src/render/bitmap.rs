@@ -1,4 +1,5 @@
-use super::{Pos, Size};
+use super::pixel::Pixel;
+use super::{pos, Pos, Rect, Size};
 
 /// RGBA bitmap.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -29,16 +30,25 @@ impl Bitmap {
         &self.data
     }
 
+    fn line_indices(&self, pos: Pos, width: u16) -> (usize, usize) {
+        let start_x = pos.x as usize;
+        let end_x = (self.size.w as usize).min(width as usize + start_x);
+        let width = end_x - start_x;
+
+        let start = self.index(pos);
+        (start, start + width)
+    }
+
     /// Gives a full horizontal line of pixels
     pub fn line(&self, pos: Pos, width: u16) -> &[u32] {
-        let idx = self.index(pos);
-        &self.data[idx..(idx + width as usize)]
+        let (start, end) = self.line_indices(pos, width);
+        &self.data[start..end]
     }
 
     /// Gives a full horizontal line of pixels (mutable)
     pub fn line_mut(&mut self, pos: Pos, width: u16) -> &mut [u32] {
-        let idx = self.index(pos);
-        &mut self.data[idx..(idx + width as usize)]
+        let (start, end) = self.line_indices(pos, width);
+        &mut self.data[start..end]
     }
 
     /// A function that looks like this:
@@ -63,6 +73,17 @@ impl Bitmap {
             let dst_line = self.line_mut(dst_pos, size.w);
             let src_line = other.line(src_pos, size.w);
             dst_line.copy_from_slice(src_line);
+        }
+    }
+
+    pub fn clear(&mut self, pixel: Pixel) {
+        self.data.fill(pixel.to_u32());
+    }
+
+    pub fn clear_area(&mut self, pixel: Pixel, rect: Rect) {
+        let pixel = pixel.to_u32();
+        for y in 0..rect.h as i16 {
+            self.line_mut(pos(rect.x, rect.y + y), rect.w).fill(pixel);
         }
     }
 
