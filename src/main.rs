@@ -37,7 +37,8 @@ struct Bounce {
 }
 
 fn game() -> Result<(), Box<dyn Error>> {
-    let mut buffer = Bitmap::new(size(WIDTH, HEIGHT));
+    let mut framebuffer = Bitmap::new(size(WIDTH, HEIGHT));
+    let mut bounce_fb = Bitmap::new(size(WIDTH, HEIGHT));
 
     let options = WindowOptions {
         borderless: true,
@@ -49,7 +50,6 @@ fn game() -> Result<(), Box<dyn Error>> {
     };
 
     let mut window = Window::new("Snaek", WIDTH as usize, HEIGHT as usize, options)?;
-
     window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 30)));
 
     let center = pos(WIDTH as i16 / 2, HEIGHT as i16 / 2);
@@ -57,17 +57,17 @@ fn game() -> Result<(), Box<dyn Error>> {
 
     let mut bounces = [
         Bounce {
-            pixel: Pixel::from_hex(0xfffee761),
+            pixel: Pixel::from_hex(0xff801234),
             rect: Rect::from_pos_size(center + pos(-8, -10), bounce_size),
             dpos: pos(-1, -1),
         },
         Bounce {
-            pixel: Pixel::from_hex(0x80ff4e7d),
+            pixel: Pixel::from_hex(0x80128034),
             rect: Rect::from_pos_size(center + pos(9, -13), bounce_size),
             dpos: pos(1, -1),
         },
         Bounce {
-            pixel: Pixel::from_hex(0xff2ce8f5),
+            pixel: Pixel::from_hex(0xff123480),
             rect: Rect::from_pos_size(center + pos(11, 12), bounce_size),
             dpos: pos(1, 1),
         },
@@ -98,13 +98,17 @@ fn game() -> Result<(), Box<dyn Error>> {
         }
 
         // drawing
-        buffer.fill(Pixel::from_hex(0xff262b44), alphacomp::over);
+        framebuffer.fill(Pixel::from_hex(0xff262b44), alphacomp::dst);
+
+        bounce_fb.fill(Pixel::from_hex(0x00000000), alphacomp::dst);
         for bounce in &bounces {
-            buffer.fill_area(bounce.pixel, bounce.rect, alphacomp::over);
+            bounce_fb.fill_area(bounce.pixel, bounce.rect, alphacomp::add);
         }
 
+        framebuffer.copy_bitmap(&bounce_fb, alphacomp::over);
+
         window
-            .update_with_buffer(buffer.pixels(), WIDTH as usize, HEIGHT as usize)
+            .update_with_buffer(framebuffer.pixels(), WIDTH as usize, HEIGHT as usize)
             .unwrap();
     }
 

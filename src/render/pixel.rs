@@ -161,4 +161,16 @@ pub mod alphacomp {
             b: pixa.b.saturating_add(pixb.b),
         }
     }
+
+    /// Computes A.
+    #[inline]
+    pub fn dst(pixa: Pixel, _pixb: Pixel) -> Pixel {
+        pixa
+    }
+
+    /// Computes B.
+    #[inline]
+    pub fn src(_pixa: Pixel, pixb: Pixel) -> Pixel {
+        pixb
+    }
 }
