@@ -92,6 +92,18 @@ impl Mul<u8> for Pixel {
     }
 }
 
+impl Mul<f32> for Pixel {
+	type Output = Pixel;
+
+	fn mul(mut self, rhs: f32) -> Self::Output {
+        self.a = (self.a as f32 * rhs) as u8;
+        self.r = (self.r as f32 * rhs) as u8;
+        self.g = (self.g as f32 * rhs) as u8;
+        self.b = (self.b as f32 * rhs) as u8;
+        self
+	}
+}
+
 impl MulAssign<u8> for Pixel {
     fn mul_assign(&mut self, rhs: u8) {
         *self = *self * rhs;
@@ -133,16 +145,13 @@ pub mod alphacomp {
 	/// An alpha composition function.
 	pub type AlphaCompFn = fn(Pixel, Pixel) -> Pixel;
 
+    /// Computes `A over B`.
     #[inline]
     pub fn over(pixa: Pixel, pixb: Pixel) -> Pixel {
-        let a = (pixa.a as u32 + pixb.a as u32 * (255 - pixa.a as u32)) as u8;
-		let a0 = a.max(1);
-        let r = ((pixa.r as u32 + pixb.r as u32 * (255 - pixa.a as u32)) / a0 as u32) as u8;
-        let g = ((pixa.g as u32 + pixb.g as u32 * (255 - pixa.a as u32)) / a0 as u32) as u8;
-        let b = ((pixa.b as u32 + pixb.b as u32 * (255 - pixa.a as u32)) / a0 as u32) as u8;
-        Pixel { a, r, g, b }
+		pixa * (pixa.a as f32 / 255.) + pixb * (1. - pixa.a as f32 / 255.) 
     }
 
+    /// Computes `A + B`.
     #[inline]
     pub fn add(pixa: Pixel, pixb: Pixel) -> Pixel {
         Pixel {

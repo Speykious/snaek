@@ -79,14 +79,24 @@ impl Bitmap {
 
     pub fn fill(&mut self, pixel: Pixel, acf: AlphaCompFn) {
         for px in &mut self.data {
-            *px = (acf)(Pixel::from_hex(*px), pixel).to_u32();
+            *px = (acf)(pixel, Pixel::from_hex(*px)).to_u32();
         }
     }
 
-    pub fn fill_area(&mut self, pixel: Pixel, rect: Rect, acf: AlphaCompFn) {
+    pub fn fill_area(&mut self, pixel: Pixel, mut rect: Rect, acf: AlphaCompFn) {
+		if rect.x < 0 {
+			rect.w = rect.w.saturating_add_signed(rect.x);
+			rect.x = 0;
+		}
+
+		if rect.y < 0 {
+			rect.h = rect.h.saturating_add_signed(rect.y);
+			rect.y = 0;
+		}
+
         for y in 0..rect.h as i16 {
             for px in self.line_mut(pos(rect.x, rect.y + y), rect.w) {
-                *px = (acf)(Pixel::from_hex(*px), pixel).to_u32();
+                *px = (acf)(pixel, Pixel::from_hex(*px)).to_u32();
             }
         }
     }
