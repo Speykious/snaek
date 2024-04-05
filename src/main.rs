@@ -53,11 +53,11 @@ fn game() -> Result<(), Box<dyn Error>> {
     window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 30)));
 
     let center = pos(WIDTH as i16 / 2, HEIGHT as i16 / 2);
-    let bounce_size = size(20, 20);
+    let bounce_size = size(30, 20);
 
     let mut bounces = [
         Bounce {
-            pixel: Pixel::from_hex(0x80fee761),
+            pixel: Pixel::from_hex(0xfffee761),
             rect: Rect::from_pos_size(center + pos(-8, -10), bounce_size),
             dpos: pos(-1, -1),
         },
@@ -67,7 +67,7 @@ fn game() -> Result<(), Box<dyn Error>> {
             dpos: pos(1, -1),
         },
         Bounce {
-            pixel: Pixel::from_hex(0x802ce8f5),
+            pixel: Pixel::from_hex(0xff2ce8f5),
             rect: Rect::from_pos_size(center + pos(11, 12), bounce_size),
             dpos: pos(1, 1),
         },
