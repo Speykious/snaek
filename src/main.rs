@@ -8,7 +8,9 @@ use minifb::{Key, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::bitmap::Bitmap;
 use render::pixel::{alphacomp, Pixel};
-use render::{pos, size, Pos, Rect};
+use render::pos::{pos, Pos};
+use render::size::size;
+use render::Rect;
 
 mod render;
 mod snake;

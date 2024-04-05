@@ -1,6 +1,7 @@
 use super::pixel::alphacomp::AlphaCompFn;
 use super::pixel::Pixel;
-use super::{pos, Pos, Rect, Size};
+use super::pos::pos;
+use super::{Pos, Rect, Size};
 
 /// RGBA bitmap.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

@@ -37,11 +37,6 @@ impl Pixel {
         val |= self.b as u32;
         val
     }
-
-    #[inline]
-    pub fn to_array(self) -> [u8; 4] {
-        unsafe { std::mem::transmute(self) }
-    }
 }
 
 impl Add for Pixel {
@@ -126,13 +121,6 @@ impl DivAssign<u8> for Pixel {
     fn div_assign(&mut self, rhs: u8) {
         *self = *self / rhs;
     }
-}
-
-/// Takes the RGB of the first pixel and the A of the second pixel.
-#[inline]
-pub fn rgb_a(mut rgb: Pixel, a: Pixel) -> Pixel {
-    rgb.a = a.a;
-    rgb
 }
 
 pub mod alphacomp {
