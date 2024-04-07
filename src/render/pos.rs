@@ -8,6 +8,10 @@ pub struct Pos {
     pub y: i16,
 }
 
+impl Pos {
+    pub const ZERO: Self = Self { x: 0, y: 0 };
+}
+
 #[inline]
 pub fn pos(x: i16, y: i16) -> Pos {
     Pos { x, y }

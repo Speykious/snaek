@@ -4,13 +4,14 @@
 use std::error::Error;
 use std::time::Duration;
 
+use self::render::bitmap::Bitmap;
+use self::render::pixel::{alphacomp, Pixel};
+use self::render::pos::{pos, Pos};
+use self::render::size::size;
+use self::render::Rect;
 use minifb::{Key, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
-use render::bitmap::Bitmap;
-use render::pixel::{alphacomp, Pixel};
-use render::pos::{pos, Pos};
-use render::size::size;
-use render::Rect;
+use render::{DrawCommand, Renderer};
 
 mod render;
 mod snake;
@@ -39,11 +40,10 @@ struct Bounce {
 }
 
 fn game() -> Result<(), Box<dyn Error>> {
-    let mut framebuffer = Bitmap::new(size(WIDTH, HEIGHT));
-    let mut bounce_fb = Bitmap::new(size(WIDTH, HEIGHT));
+    let mut renderer = Renderer::new(Bitmap::new(size(WIDTH, HEIGHT)));
 
     let options = WindowOptions {
-        borderless: true,
+        borderless: false,
         title: true,
         resize: false,
         scale: Scale::X4,
@@ -100,17 +100,35 @@ fn game() -> Result<(), Box<dyn Error>> {
         }
 
         // drawing
-        framebuffer.fill(Pixel::from_hex(0xff262b44), alphacomp::dst);
+        let dc = DrawCommand::Composite {
+            commands: vec![
+                DrawCommand::Fill {
+                    rect: Rect::from_pos_size(Pos::ZERO, renderer.size()),
+                    color: Pixel::from_hex(0xff262b44),
+                    acf: alphacomp::dst,
+                },
+                DrawCommand::Composite {
+                    commands: std::iter::once(DrawCommand::Clear)
+                        .chain(bounces.iter().map(|bounce| DrawCommand::Fill {
+                            rect: bounce.rect,
+                            color: bounce.pixel,
+                            acf: alphacomp::add,
+                        }))
+                        .collect(),
+                    acf: alphacomp::over,
+                },
+            ],
+            acf: alphacomp::over,
+        };
 
-        bounce_fb.fill(Pixel::from_hex(0x00000000), alphacomp::dst);
-        for bounce in &bounces {
-            bounce_fb.fill_area(bounce.pixel, bounce.rect, alphacomp::add);
-        }
-
-        framebuffer.copy_bitmap(&bounce_fb, alphacomp::over);
+        renderer.draw(dc);
 
         window
-            .update_with_buffer(framebuffer.pixels(), WIDTH as usize, HEIGHT as usize)
+            .update_with_buffer(
+                renderer.first_framebuffer().pixels(),
+                WIDTH as usize,
+                HEIGHT as usize,
+            )
             .unwrap();
     }
 

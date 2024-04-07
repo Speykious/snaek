@@ -10,13 +10,15 @@ pub struct Pixel {
 }
 
 impl Pixel {
+    pub const ZERO: Self = Self::from_hex(0x00000000);
+
     #[inline]
-    pub fn new(a: u8, r: u8, g: u8, b: u8) -> Self {
+    pub const fn new(a: u8, r: u8, g: u8, b: u8) -> Self {
         Self { a, r, g, b }
     }
 
     #[inline]
-    pub fn from_hex(hex: u32) -> Self {
+    pub const fn from_hex(hex: u32) -> Self {
         // We're doing math here to not assume big- or little-endian
 
         Self {
@@ -28,7 +30,7 @@ impl Pixel {
     }
 
     #[inline]
-    pub fn to_u32(self) -> u32 {
+    pub const fn to_u32(self) -> u32 {
         // We're doing math here to not assume big- or little-endian
 
         let mut val = (self.a as u32) << 24;
