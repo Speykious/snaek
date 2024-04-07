@@ -78,10 +78,8 @@ pub enum DrawCommand {
         sprite: Sprite,
         acf: AlphaCompFn,
     },
-    Composite {
-        commands: Vec<DrawCommand>,
-        acf: AlphaCompFn,
-    },
+    BeginComposite,
+    EndComposite(AlphaCompFn),
 }
 
 struct FramebufferStack {
@@ -150,43 +148,45 @@ impl Renderer {
         self.fb_stack.fb(0)
     }
 
-    pub fn draw(&mut self, command: DrawCommand) {
-        draw_rec(command, 0, &mut self.fb_stack, &self.spritesheets);
+    pub fn draw(&mut self, commands: &[DrawCommand]) {
+        draw(commands, &mut self.fb_stack, &self.spritesheets);
     }
 
     pub fn size(&self) -> Size {
         self.fb_stack.size
     }
+
+    pub fn rect(&self) -> Rect {
+        Rect::from_pos_size(Pos::ZERO, self.size())
+    }
 }
 
-fn draw_rec(command: DrawCommand, fb_id: usize, fb_stack: &mut FramebufferStack, spritesheets: &[Bitmap]) {
-    match command {
-        DrawCommand::Clear => (fb_stack.fb_mut(fb_id)).fill(Pixel::ZERO, alphacomp::dst),
-        DrawCommand::Fill { rect, color, acf } => {
-            (fb_stack.fb_mut(fb_id)).fill_area(color, rect, acf)
-        }
-        DrawCommand::Sprite { pos, sprite, acf } => {
-            if let Some(bitmap) = spritesheets.get(sprite.spritesheet_id.0) {
-                (fb_stack.fb_mut(fb_id)).copy_bitmap_area(
-                    bitmap,
-                    pos,
-                    sprite.rect.pos(),
-                    sprite.rect.size(),
-                    acf,
-                );
-            };
-        }
-        DrawCommand::Composite { commands, acf } => {
-            if commands.is_empty() {
-                return;
+fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets: &[Bitmap]) {
+    let mut fb_id = 0;
+    for command in commands {
+        match *command {
+            DrawCommand::Clear => (fb_stack.fb_mut(fb_id)).fill(Pixel::ZERO, alphacomp::dst),
+            DrawCommand::Fill { rect, color, acf } => {
+                (fb_stack.fb_mut(fb_id)).fill_area(color, rect, acf)
             }
-
-            let next_fb_id = fb_id + 1;
-            for command in commands {
-                draw_rec(command, next_fb_id, fb_stack, spritesheets);
+            DrawCommand::Sprite { pos, sprite, acf } => {
+                if let Some(bitmap) = spritesheets.get(sprite.spritesheet_id.0) {
+                    (fb_stack.fb_mut(fb_id)).copy_bitmap_area(
+                        bitmap,
+                        pos,
+                        sprite.rect.pos(),
+                        sprite.rect.size(),
+                        acf,
+                    );
+                };
             }
-
-            fb_stack.blit_fb_down(next_fb_id, acf);
+            DrawCommand::BeginComposite => {
+                fb_id += 1;
+            }
+            DrawCommand::EndComposite(acf) => {
+                fb_stack.blit_fb_down(fb_id, acf);
+                fb_id -= 1;
+            }
         }
     }
 }

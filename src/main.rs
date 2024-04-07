@@ -52,7 +52,7 @@ fn game() -> Result<(), Box<dyn Error>> {
     };
 
     let mut window = Window::new("Snaek", WIDTH as usize, HEIGHT as usize, options)?;
-    window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 30)));
+    window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 60)));
 
     let center = pos(WIDTH as i16 / 2, HEIGHT as i16 / 2);
     let bounce_size = size(30, 20);
@@ -100,28 +100,30 @@ fn game() -> Result<(), Box<dyn Error>> {
         }
 
         // drawing
-        let dc = DrawCommand::Composite {
-            commands: vec![
-                DrawCommand::Fill {
-                    rect: Rect::from_pos_size(Pos::ZERO, renderer.size()),
-                    color: Pixel::from_hex(0xff262b44),
-                    acf: alphacomp::dst,
-                },
-                DrawCommand::Composite {
-                    commands: std::iter::once(DrawCommand::Clear)
-                        .chain(bounces.iter().map(|bounce| DrawCommand::Fill {
-                            rect: bounce.rect,
-                            color: bounce.pixel,
-                            acf: alphacomp::add,
-                        }))
-                        .collect(),
-                    acf: alphacomp::over,
-                },
-            ],
-            acf: alphacomp::over,
-        };
+        let mut draw_cmds = Vec::new();
+        {
+            draw_cmds.push(DrawCommand::Fill {
+                rect: renderer.rect(),
+                color: Pixel::from_hex(0xff262b44),
+                acf: alphacomp::dst,
+            });
 
-        renderer.draw(dc);
+            draw_cmds.push(DrawCommand::BeginComposite);
+            draw_cmds.push(DrawCommand::Fill {
+                rect: renderer.rect(),
+                color: Pixel::from_hex(0x10000000),
+                acf: alphacomp::over,
+            });
+            for bounce in &bounces {
+                draw_cmds.push(DrawCommand::Fill {
+                    rect: bounce.rect,
+                    color: bounce.pixel,
+                    acf: alphacomp::add,
+                });
+            }
+            draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
+        }
+        renderer.draw(&draw_cmds);
 
         window
             .update_with_buffer(
