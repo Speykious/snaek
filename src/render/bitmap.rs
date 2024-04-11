@@ -7,15 +7,19 @@ use super::{Pos, Rect, Size};
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(C)]
 pub struct Bitmap {
-    data: Vec<u32>,
+    buffer: Vec<u32>,
     size: Size,
 }
 
 impl Bitmap {
+    pub fn from_buffer(buffer: Vec<u32>, size: Size) -> Self {
+        Self { buffer, size }
+    }
+
     #[inline]
     pub fn new(size: Size) -> Self {
         Self {
-            data: vec![0; size.w as usize * size.h as usize],
+            buffer: vec![0; size.w as usize * size.h as usize],
             size,
         }
     }
@@ -23,13 +27,13 @@ impl Bitmap {
     /// Resizes the bitmap with `size` as the size.
     /// This completely resets the data.
     pub fn resize(&mut self, size: Size) {
-        self.data = vec![0; size.w as usize * size.h as usize];
+        self.buffer = vec![0; size.w as usize * size.h as usize];
         self.size = size;
     }
 
     #[inline]
     pub fn pixels(&self) -> &[u32] {
-        &self.data
+        &self.buffer
     }
 
     fn line_indices(&self, pos: Pos, width: u16) -> (usize, usize) {
@@ -44,13 +48,13 @@ impl Bitmap {
     /// Gives a full horizontal line of pixels
     pub fn line(&self, pos: Pos, width: u16) -> &[u32] {
         let (start, end) = self.line_indices(pos, width);
-        &self.data[start..end]
+        &self.buffer[start..end]
     }
 
     /// Gives a full horizontal line of pixels (mutable)
     pub fn line_mut(&mut self, pos: Pos, width: u16) -> &mut [u32] {
         let (start, end) = self.line_indices(pos, width);
-        &mut self.data[start..end]
+        &mut self.buffer[start..end]
     }
 
     /// A function that looks like this:
@@ -67,7 +71,7 @@ impl Bitmap {
     }
 
     pub fn copy_bitmap(&mut self, other: &Bitmap, acf: AlphaCompFn) {
-        for (px, other_px) in self.data.iter_mut().zip(other.data.iter()) {
+        for (px, other_px) in self.buffer.iter_mut().zip(other.buffer.iter()) {
             *px = (acf)(Pixel::from_hex(*other_px), Pixel::from_hex(*px)).to_u32();
         }
     }
@@ -96,7 +100,7 @@ impl Bitmap {
     }
 
     pub fn fill(&mut self, pixel: Pixel, acf: AlphaCompFn) {
-        for px in &mut self.data {
+        for px in &mut self.buffer {
             *px = (acf)(pixel, Pixel::from_hex(*px)).to_u32();
         }
     }

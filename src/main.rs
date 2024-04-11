@@ -2,6 +2,8 @@
 #![allow(unused)]
 
 use std::error::Error;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::time::Duration;
 
 use self::render::bitmap::Bitmap;
@@ -9,12 +11,14 @@ use self::render::pixel::{alphacomp, Pixel};
 use self::render::pos::{pos, Pos};
 use self::render::size::size;
 use self::render::Rect;
+use image::{ImageFormat, ImageResult};
 use minifb::{Key, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::{DrawCommand, Renderer};
 
 mod render;
 mod snake;
+mod spritesheet;
 mod ui;
 
 const WIDTH: u16 = 97;
@@ -39,8 +43,30 @@ struct Bounce {
     pub dpos: Pos,
 }
 
+const IMG_ASCII_CHARS: &[u8] = include_bytes!("../assets/ascii-chars.png");
+const IMG_SNAEKSHEET: &[u8] = include_bytes!("../assets/snaeksheet.png");
+
+/// Loads a PNG from memory into a raw ARGB8 bitmap.
+fn load_png_from_memory(png: &[u8]) -> ImageResult<Bitmap> {
+    let img = image::load_from_memory_with_format(png, ImageFormat::Png)?;
+
+    let size = size(img.width() as u16, img.height() as u16);
+
+    let buffer = (img.into_rgba8().pixels())
+        .map(|pixel| {
+            let [r, g, b, a] = pixel.0;
+            u32::from_le_bytes([b, g, r, a])
+        })
+        .collect::<Vec<u32>>();
+
+    Ok(Bitmap::from_buffer(buffer, size))
+}
+
 fn game() -> Result<(), Box<dyn Error>> {
     let mut renderer = Renderer::new(Bitmap::new(size(WIDTH, HEIGHT)));
+
+    let bitmap_ascii_chars = renderer.register_spritesheet(load_png_from_memory(IMG_ASCII_CHARS)?);
+    let bitmap_snaeksheet = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
 
     let options = WindowOptions {
         borderless: false,
