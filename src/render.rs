@@ -29,6 +29,15 @@ impl Rect {
     }
 
     #[inline]
+    pub fn from_ab(pos_a: Pos, pos_b: Pos) -> Self {
+        let xa = pos_a.x.min(pos_b.x);
+        let ya = pos_a.y.min(pos_b.y);
+        let xb = pos_a.x.max(pos_b.x);
+        let yb = pos_a.y.max(pos_b.y);
+        Self::from_xywh(xa, ya, (xb - xa) as u16, (yb - ya) as u16)
+    }
+
+    #[inline]
     pub fn from_pos_size(pos: Pos, size: Size) -> Self {
         Self {
             x: pos.x,
@@ -336,7 +345,7 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
                 );
             }
             DrawCommand::NineSlicingSprite { rect, nss, acf } => {
-                if rect.w < nss.sprite.rect.w || rect.h < nss.sprite.rect.h {
+                if rect.w == 0 || rect.h == 0 {
                     continue;
                 }
 
@@ -361,7 +370,7 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
                     }
 
                     let mut x = nss.vl;
-                    while x < rect.w - nssp.rect.w {
+                    while x < rect.w.saturating_sub(nssp.rect.w) {
                         let nssp_pos = nssp.rect.pos();
                         let nssp_size = nssp.rect.size();
                         (fb_stack.fb_mut(fb_id)).copy_bitmap_area(
@@ -395,7 +404,7 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
                     }
 
                     let mut y = nss.ht;
-                    while y < rect.h - nssp.rect.h {
+                    while y < rect.h.saturating_sub(nssp.rect.h) {
                         let nssp_pos = nssp.rect.pos();
                         let nssp_size = nssp.rect.size();
                         (fb_stack.fb_mut(fb_id)).copy_bitmap_area(
@@ -416,9 +425,9 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
                     }
 
                     let mut y = nss.ht;
-                    while y < rect.h - nssp.rect.h {
+                    while y < rect.h.saturating_sub(nssp.rect.h) {
                         let mut x = nss.vl;
-                        while x < rect.w - nssp.rect.w {
+                        while x < rect.w.saturating_sub(nssp.rect.w) {
                             let nssp_pos = nssp.rect.pos();
                             let nssp_size = nssp.rect.size();
                             (fb_stack.fb_mut(fb_id)).copy_bitmap_area(
@@ -444,7 +453,7 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
                     }
 
                     let mut y = nss.ht;
-                    while y < rect.h - nssp.rect.h {
+                    while y < rect.h.saturating_sub(nssp.rect.h) {
                         let nssp_pos = nssp.rect.pos();
                         let nssp_size = nssp.rect.size();
                         (fb_stack.fb_mut(fb_id)).copy_bitmap_area(
@@ -481,7 +490,7 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
                     }
 
                     let mut x = nss.vl;
-                    while x < rect.w - nssp.rect.w {
+                    while x < rect.w.saturating_sub(nssp.rect.w) {
                         let nssp_pos = nssp.rect.pos();
                         let nssp_size = nssp.rect.size();
                         (fb_stack.fb_mut(fb_id)).copy_bitmap_area(

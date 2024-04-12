@@ -12,7 +12,7 @@ use self::render::pos::{pos, Pos};
 use self::render::size::size;
 use self::render::Rect;
 use image::{ImageFormat, ImageResult};
-use minifb::{Key, Scale, ScaleMode, Window, WindowOptions};
+use minifb::{Key, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::{DrawCommand, Renderer};
 
@@ -104,10 +104,15 @@ fn game() -> Result<(), Box<dyn Error>> {
         },
     ];
 
+    let mut mouse_pos = Pos::ZERO;
     while window.is_open() {
         // input handling
         if window.is_key_down(Key::Escape) {
             break;
+        }
+
+        if let Some(next_pos) = window.get_mouse_pos(MouseMode::Clamp) {
+            mouse_pos = pos(next_pos.0.round() as i16, next_pos.1.round() as i16);
         }
 
         // state update
@@ -169,7 +174,7 @@ fn game() -> Result<(), Box<dyn Error>> {
                     });
 
                     draw_cmds.push(DrawCommand::NineSlicingSprite {
-                        rect: Rect::from_xywh(10, 10, 20, 30),
+                        rect: Rect::from_ab(pos(10, 10), mouse_pos),
                         nss: snaeksheet.box_embossed,
                         acf: alphacomp::over,
                     });
