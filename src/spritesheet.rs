@@ -3,182 +3,182 @@ use crate::render::{NineSlicingSprite, Rect, Sprite, SpritesheetId};
 #[derive(Debug)]
 #[repr(C)]
 pub struct AsciiCharsSpritesheet {
-    /// Space character (` `)
-    pub space: Sprite,
+	/// Space character (` `)
+	pub space: Sprite,
 
-    /// Upper A letter (`A`)
-    pub upper_a: Sprite,
-    /// Upper B letter (`B`)
-    pub upper_b: Sprite,
-    /// Upper C letter (`C`)
-    pub upper_c: Sprite,
-    /// Upper D letter (`D`)
-    pub upper_d: Sprite,
-    /// Upper E letter (`E`)
-    pub upper_e: Sprite,
-    /// Upper F letter (`F`)
-    pub upper_f: Sprite,
-    /// Upper G letter (`G`)
-    pub upper_g: Sprite,
-    /// Upper H letter (`H`)
-    pub upper_h: Sprite,
-    /// Upper I letter (`I`)
-    pub upper_i: Sprite,
-    /// Upper J letter (`J`)
-    pub upper_j: Sprite,
-    /// Upper K letter (`K`)
-    pub upper_k: Sprite,
-    /// Upper L letter (`L`)
-    pub upper_l: Sprite,
-    /// Upper M letter (`M`)
-    pub upper_m: Sprite,
-    /// Upper N letter (`N`)
-    pub upper_n: Sprite,
-    /// Upper O letter (`O`)
-    pub upper_o: Sprite,
-    /// Upper P letter (`P`)
-    pub upper_p: Sprite,
-    /// Upper Q letter (`Q`)
-    pub upper_q: Sprite,
-    /// Upper R letter (`R`)
-    pub upper_r: Sprite,
-    /// Upper S letter (`S`)
-    pub upper_s: Sprite,
-    /// Upper T letter (`T`)
-    pub upper_t: Sprite,
-    /// Upper U letter (`U`)
-    pub upper_u: Sprite,
-    /// Upper V letter (`V`)
-    pub upper_v: Sprite,
-    /// Upper W letter (`W`)
-    pub upper_w: Sprite,
-    /// Upper X letter (`X`)
-    pub upper_x: Sprite,
-    /// Upper Y letter (`Y`)
-    pub upper_y: Sprite,
-    /// Upper Z letter (`Z`)
-    pub upper_z: Sprite,
+	/// Upper A letter (`A`)
+	pub upper_a: Sprite,
+	/// Upper B letter (`B`)
+	pub upper_b: Sprite,
+	/// Upper C letter (`C`)
+	pub upper_c: Sprite,
+	/// Upper D letter (`D`)
+	pub upper_d: Sprite,
+	/// Upper E letter (`E`)
+	pub upper_e: Sprite,
+	/// Upper F letter (`F`)
+	pub upper_f: Sprite,
+	/// Upper G letter (`G`)
+	pub upper_g: Sprite,
+	/// Upper H letter (`H`)
+	pub upper_h: Sprite,
+	/// Upper I letter (`I`)
+	pub upper_i: Sprite,
+	/// Upper J letter (`J`)
+	pub upper_j: Sprite,
+	/// Upper K letter (`K`)
+	pub upper_k: Sprite,
+	/// Upper L letter (`L`)
+	pub upper_l: Sprite,
+	/// Upper M letter (`M`)
+	pub upper_m: Sprite,
+	/// Upper N letter (`N`)
+	pub upper_n: Sprite,
+	/// Upper O letter (`O`)
+	pub upper_o: Sprite,
+	/// Upper P letter (`P`)
+	pub upper_p: Sprite,
+	/// Upper Q letter (`Q`)
+	pub upper_q: Sprite,
+	/// Upper R letter (`R`)
+	pub upper_r: Sprite,
+	/// Upper S letter (`S`)
+	pub upper_s: Sprite,
+	/// Upper T letter (`T`)
+	pub upper_t: Sprite,
+	/// Upper U letter (`U`)
+	pub upper_u: Sprite,
+	/// Upper V letter (`V`)
+	pub upper_v: Sprite,
+	/// Upper W letter (`W`)
+	pub upper_w: Sprite,
+	/// Upper X letter (`X`)
+	pub upper_x: Sprite,
+	/// Upper Y letter (`Y`)
+	pub upper_y: Sprite,
+	/// Upper Z letter (`Z`)
+	pub upper_z: Sprite,
 
-    /// Lower A letter (`a`)
-    pub lower_a: Sprite,
-    /// Lower B letter (`b`)
-    pub lower_b: Sprite,
-    /// Lower C letter (`c`)
-    pub lower_c: Sprite,
-    /// Lower D letter (`d`)
-    pub lower_d: Sprite,
-    /// Lower E letter (`e`)
-    pub lower_e: Sprite,
-    /// Lower F letter (`f`)
-    pub lower_f: Sprite,
-    /// Lower G letter (`g`)
-    pub lower_g: Sprite,
-    /// Lower H letter (`h`)
-    pub lower_h: Sprite,
-    /// Lower I letter (`i`)
-    pub lower_i: Sprite,
-    /// Lower J letter (`j`)
-    pub lower_j: Sprite,
-    /// Lower K letter (`k`)
-    pub lower_k: Sprite,
-    /// Lower L letter (`l`)
-    pub lower_l: Sprite,
-    /// Lower M letter (`m`)
-    pub lower_m: Sprite,
-    /// Lower N letter (`n`)
-    pub lower_n: Sprite,
-    /// Lower O letter (`o`)
-    pub lower_o: Sprite,
-    /// Lower P letter (`p`)
-    pub lower_p: Sprite,
-    /// Lower Q letter (`q`)
-    pub lower_q: Sprite,
-    /// Lower R letter (`r`)
-    pub lower_r: Sprite,
-    /// Lower S letter (`s`)
-    pub lower_s: Sprite,
-    /// Lower T letter (`t`)
-    pub lower_t: Sprite,
-    /// Lower U letter (`u`)
-    pub lower_u: Sprite,
-    /// Lower V letter (`v`)
-    pub lower_v: Sprite,
-    /// Lower W letter (`w`)
-    pub lower_w: Sprite,
-    /// Lower X letter (`x`)
-    pub lower_x: Sprite,
-    /// Lower Y letter (`y`)
-    pub lower_y: Sprite,
-    /// Lower Z letter (`z`)
-    pub lower_z: Sprite,
+	/// Lower A letter (`a`)
+	pub lower_a: Sprite,
+	/// Lower B letter (`b`)
+	pub lower_b: Sprite,
+	/// Lower C letter (`c`)
+	pub lower_c: Sprite,
+	/// Lower D letter (`d`)
+	pub lower_d: Sprite,
+	/// Lower E letter (`e`)
+	pub lower_e: Sprite,
+	/// Lower F letter (`f`)
+	pub lower_f: Sprite,
+	/// Lower G letter (`g`)
+	pub lower_g: Sprite,
+	/// Lower H letter (`h`)
+	pub lower_h: Sprite,
+	/// Lower I letter (`i`)
+	pub lower_i: Sprite,
+	/// Lower J letter (`j`)
+	pub lower_j: Sprite,
+	/// Lower K letter (`k`)
+	pub lower_k: Sprite,
+	/// Lower L letter (`l`)
+	pub lower_l: Sprite,
+	/// Lower M letter (`m`)
+	pub lower_m: Sprite,
+	/// Lower N letter (`n`)
+	pub lower_n: Sprite,
+	/// Lower O letter (`o`)
+	pub lower_o: Sprite,
+	/// Lower P letter (`p`)
+	pub lower_p: Sprite,
+	/// Lower Q letter (`q`)
+	pub lower_q: Sprite,
+	/// Lower R letter (`r`)
+	pub lower_r: Sprite,
+	/// Lower S letter (`s`)
+	pub lower_s: Sprite,
+	/// Lower T letter (`t`)
+	pub lower_t: Sprite,
+	/// Lower U letter (`u`)
+	pub lower_u: Sprite,
+	/// Lower V letter (`v`)
+	pub lower_v: Sprite,
+	/// Lower W letter (`w`)
+	pub lower_w: Sprite,
+	/// Lower X letter (`x`)
+	pub lower_x: Sprite,
+	/// Lower Y letter (`y`)
+	pub lower_y: Sprite,
+	/// Lower Z letter (`z`)
+	pub lower_z: Sprite,
 
-    /// Digit zero (`0`)
-    pub digit_0: Sprite,
-    /// Digit one (`1`)
-    pub digit_1: Sprite,
-    /// Digit two (`2`)
-    pub digit_2: Sprite,
-    /// Digit three (`3`)
-    pub digit_3: Sprite,
-    /// Digit four (`4`)
-    pub digit_4: Sprite,
-    /// Digit five (`5`)
-    pub digit_5: Sprite,
-    /// Digit six (`6`)
-    pub digit_6: Sprite,
-    /// Digit seven (`7`)
-    pub digit_7: Sprite,
-    /// Digit eight (`8`)
-    pub digit_8: Sprite,
-    /// Digit nine (`9`)
-    pub digit_9: Sprite,
+	/// Digit zero (`0`)
+	pub digit_0: Sprite,
+	/// Digit one (`1`)
+	pub digit_1: Sprite,
+	/// Digit two (`2`)
+	pub digit_2: Sprite,
+	/// Digit three (`3`)
+	pub digit_3: Sprite,
+	/// Digit four (`4`)
+	pub digit_4: Sprite,
+	/// Digit five (`5`)
+	pub digit_5: Sprite,
+	/// Digit six (`6`)
+	pub digit_6: Sprite,
+	/// Digit seven (`7`)
+	pub digit_7: Sprite,
+	/// Digit eight (`8`)
+	pub digit_8: Sprite,
+	/// Digit nine (`9`)
+	pub digit_9: Sprite,
 
-    /// Exclamation mark character (`!`)
-    pub exclamation_mark: Sprite,
-    /// Question mark character (`?`)
-    pub question_mark: Sprite,
-    /// Colon character (`:`)
-    pub colon: Sprite,
-    /// Semicolon character (`;`)
-    pub semicolon: Sprite,
-    /// Comma character (`,`)
-    pub comma: Sprite,
-    /// Period character (`.`)
-    pub period: Sprite,
-    /// Star character (`*`)
-    pub star: Sprite,
-    /// Hashtag character (`#`)
-    pub hashtag: Sprite,
-    /// Single quote character (`'`)
-    pub single_quote: Sprite,
-    /// Double quote character (`"`)
-    pub double_quote: Sprite,
-    /// Left bracket character (`[`)
-    pub bracket_l: Sprite,
-    /// Right bracket character (`]`)
-    pub bracket_r: Sprite,
-    /// Left parenthesis character (`(`)
-    pub parens_l: Sprite,
-    /// Right parenthesis character (`)`)
-    pub parens_r: Sprite,
-    /// Left brace character (`{`)
-    pub brace_l: Sprite,
-    /// Right brace character (`}`)
-    pub brace_r: Sprite,
-    /// Less-than character (`<`)
-    pub less_than: Sprite,
-    /// Greater-than character (`>`)
-    pub greater_than: Sprite,
-    /// Minus character (`-`)
-    pub minus: Sprite,
-    /// Plus character (`+`)
-    pub plus: Sprite,
-    /// Slash character (`/`)
-    pub slash: Sprite,
-    /// Equals character (`=`)
-    pub equals: Sprite,
-    /// Underscore character (`_`)
-    pub underscore: Sprite,
+	/// Exclamation mark character (`!`)
+	pub exclamation_mark: Sprite,
+	/// Question mark character (`?`)
+	pub question_mark: Sprite,
+	/// Colon character (`:`)
+	pub colon: Sprite,
+	/// Semicolon character (`;`)
+	pub semicolon: Sprite,
+	/// Comma character (`,`)
+	pub comma: Sprite,
+	/// Period character (`.`)
+	pub period: Sprite,
+	/// Star character (`*`)
+	pub star: Sprite,
+	/// Hashtag character (`#`)
+	pub hashtag: Sprite,
+	/// Single quote character (`'`)
+	pub single_quote: Sprite,
+	/// Double quote character (`"`)
+	pub double_quote: Sprite,
+	/// Left bracket character (`[`)
+	pub bracket_l: Sprite,
+	/// Right bracket character (`]`)
+	pub bracket_r: Sprite,
+	/// Left parenthesis character (`(`)
+	pub parens_l: Sprite,
+	/// Right parenthesis character (`)`)
+	pub parens_r: Sprite,
+	/// Left brace character (`{`)
+	pub brace_l: Sprite,
+	/// Right brace character (`}`)
+	pub brace_r: Sprite,
+	/// Less-than character (`<`)
+	pub less_than: Sprite,
+	/// Greater-than character (`>`)
+	pub greater_than: Sprite,
+	/// Minus character (`-`)
+	pub minus: Sprite,
+	/// Plus character (`+`)
+	pub plus: Sprite,
+	/// Slash character (`/`)
+	pub slash: Sprite,
+	/// Equals character (`=`)
+	pub equals: Sprite,
+	/// Underscore character (`_`)
+	pub underscore: Sprite,
 }
 
 #[rustfmt::skip]
@@ -280,109 +280,109 @@ pub fn ascii_chars_spritesheet(id: SpritesheetId) -> AsciiCharsSpritesheet {
 #[derive(Debug)]
 #[repr(C)]
 pub struct Snaeksheet {
-    /// Mouse cursor
-    pub cursor: Sprite,
+	/// Mouse cursor
+	pub cursor: Sprite,
 
-    /// Head of the snake
-    pub snake_head: Sprite,
-    /// When the snake goes straight
-    pub snake_straight: Sprite,
-    /// When the snake goes gay (it turns left/right)
-    pub snake_gay: Sprite,
-    /// End of the snake
-    pub snake_end: Sprite,
-    /// Tongue of the snake
-    pub snake_tongue: Sprite,
+	/// Head of the snake
+	pub snake_head: Sprite,
+	/// When the snake goes straight
+	pub snake_straight: Sprite,
+	/// When the snake goes gay (it turns left/right)
+	pub snake_gay: Sprite,
+	/// End of the snake
+	pub snake_end: Sprite,
+	/// Tongue of the snake
+	pub snake_tongue: Sprite,
 
-    /// Yellow banana
-    pub banana_yellow: Sprite,
-    /// Red banana
-    pub banana_red: Sprite,
-    /// Cyan banana
-    pub banana_cyan: Sprite,
+	/// Yellow banana
+	pub banana_yellow: Sprite,
+	/// Red banana
+	pub banana_red: Sprite,
+	/// Cyan banana
+	pub banana_cyan: Sprite,
 
-    /// playfield box
-    pub box_playfield: NineSlicingSprite,
-    /// big carved box
-    pub box_big_carved: NineSlicingSprite,
-    /// number display box
-    pub box_num_display: NineSlicingSprite,
-    /// text input box
-    pub box_text_input: NineSlicingSprite,
-    /// embossed box
-    pub box_embossed: NineSlicingSprite,
-    /// carved box
-    pub box_carved: NineSlicingSprite,
-    /// green box
-    pub box_green: NineSlicingSprite,
-    /// red box
-    pub box_red: NineSlicingSprite,
+	/// playfield box
+	pub box_playfield: NineSlicingSprite,
+	/// big carved box
+	pub box_big_carved: NineSlicingSprite,
+	/// number display box
+	pub box_num_display: NineSlicingSprite,
+	/// text input box
+	pub box_text_input: NineSlicingSprite,
+	/// embossed box
+	pub box_embossed: NineSlicingSprite,
+	/// carved box
+	pub box_carved: NineSlicingSprite,
+	/// green box
+	pub box_green: NineSlicingSprite,
+	/// red box
+	pub box_red: NineSlicingSprite,
 
-    /// carved separator line
-    pub carved_sep_line: Sprite,
+	/// carved separator line
+	pub carved_sep_line: Sprite,
 
-    /// Snaek game icon
-    pub snaek_icon: Sprite,
+	/// Snaek game icon
+	pub snaek_icon: Sprite,
 
-    /// Minimize button icon
-    pub icon_minimize: Sprite,
-    /// Close button icon
-    pub icon_close: Sprite,
+	/// Minimize button icon
+	pub icon_minimize: Sprite,
+	/// Close button icon
+	pub icon_close: Sprite,
 
-    /// Play/pause button's play icon
-    pub icon_play: Sprite,
-    /// Play/pause button's pause icon
-    pub icon_pause: Sprite,
-    /// Restart button icon
-    pub icon_restart: Sprite,
+	/// Play/pause button's play icon
+	pub icon_play: Sprite,
+	/// Play/pause button's pause icon
+	pub icon_pause: Sprite,
+	/// Restart button icon
+	pub icon_restart: Sprite,
 
-    /// Exclamation mark on the small number display
-    pub num_bang: Sprite,
-    /// Colon on the small number display
-    pub num_colon: Sprite,
-    /// digit zero on the small number display
-    pub num_0: Sprite,
-    /// digit one on the small number display
-    pub num_1: Sprite,
-    /// digit two on the small number display
-    pub num_2: Sprite,
-    /// digit three on the small number display
-    pub num_3: Sprite,
-    /// digit four on the small number display
-    pub num_4: Sprite,
-    /// digit five on the small number display
-    pub num_5: Sprite,
-    /// digit six on the small number display
-    pub num_6: Sprite,
-    /// digit seven on the small number display
-    pub num_7: Sprite,
-    /// digit eight on the small number display
-    pub num_8: Sprite,
-    /// digit nine on the small number display
-    pub num_9: Sprite,
+	/// Exclamation mark on the small number display
+	pub num_bang: Sprite,
+	/// Colon on the small number display
+	pub num_colon: Sprite,
+	/// digit zero on the small number display
+	pub num_0: Sprite,
+	/// digit one on the small number display
+	pub num_1: Sprite,
+	/// digit two on the small number display
+	pub num_2: Sprite,
+	/// digit three on the small number display
+	pub num_3: Sprite,
+	/// digit four on the small number display
+	pub num_4: Sprite,
+	/// digit five on the small number display
+	pub num_5: Sprite,
+	/// digit six on the small number display
+	pub num_6: Sprite,
+	/// digit seven on the small number display
+	pub num_7: Sprite,
+	/// digit eight on the small number display
+	pub num_8: Sprite,
+	/// digit nine on the small number display
+	pub num_9: Sprite,
 
-    /// digit placeholder on the big number display
-    pub bignum_placeholder: Sprite,
-    /// digit zero on the big number display
-    pub bignum_0: Sprite,
-    /// digit one on the big number display
-    pub bignum_1: Sprite,
-    /// digit two on the big number display
-    pub bignum_2: Sprite,
-    /// digit three on the big number display
-    pub bignum_3: Sprite,
-    /// digit four on the big number display
-    pub bignum_4: Sprite,
-    /// digit five on the big number display
-    pub bignum_5: Sprite,
-    /// digit six on the big number display
-    pub bignum_6: Sprite,
-    /// digit seven on the big number display
-    pub bignum_7: Sprite,
-    /// digit eight on the big number display
-    pub bignum_8: Sprite,
-    /// digit nine on the big number display
-    pub bignum_9: Sprite,
+	/// digit placeholder on the big number display
+	pub bignum_placeholder: Sprite,
+	/// digit zero on the big number display
+	pub bignum_0: Sprite,
+	/// digit one on the big number display
+	pub bignum_1: Sprite,
+	/// digit two on the big number display
+	pub bignum_2: Sprite,
+	/// digit three on the big number display
+	pub bignum_3: Sprite,
+	/// digit four on the big number display
+	pub bignum_4: Sprite,
+	/// digit five on the big number display
+	pub bignum_5: Sprite,
+	/// digit six on the big number display
+	pub bignum_6: Sprite,
+	/// digit seven on the big number display
+	pub bignum_7: Sprite,
+	/// digit eight on the big number display
+	pub bignum_8: Sprite,
+	/// digit nine on the big number display
+	pub bignum_9: Sprite,
 }
 
 #[rustfmt::skip]
