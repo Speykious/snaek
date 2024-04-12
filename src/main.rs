@@ -6,16 +6,17 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::time::Duration;
 
+use self::math::pos::{pos, Pos};
+use self::math::rect::Rect;
+use self::math::size::size;
 use self::render::bitmap::Bitmap;
 use self::render::pixel::{alphacomp, Pixel};
-use self::render::pos::{pos, Pos};
-use self::render::size::size;
-use self::render::Rect;
 use image::{ImageFormat, ImageResult};
 use minifb::{Key, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::{DrawCommand, Renderer};
 
+mod math;
 mod render;
 mod snake;
 mod spritesheet;

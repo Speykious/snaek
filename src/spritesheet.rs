@@ -1,4 +1,5 @@
-use crate::render::{NineSlicingSprite, Rect, Sprite, SpritesheetId};
+use crate::math::rect::Rect;
+use crate::render::{NineSlicingSprite, Sprite, SpritesheetId};
 
 #[derive(Debug)]
 #[repr(C)]
