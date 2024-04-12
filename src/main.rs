@@ -19,7 +19,6 @@ use render::{DrawCommand, Renderer};
 mod math;
 mod render;
 mod snake;
-mod spritesheet;
 mod ui;
 
 const WIDTH: u16 = 97;
@@ -69,8 +68,8 @@ fn game() -> Result<(), Box<dyn Error>> {
 	let ascii_chars_id = renderer.register_spritesheet(load_png_from_memory(IMG_ASCII_CHARS)?);
 	let snaeksheet_id = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
 
-	let ascii_chars = spritesheet::ascii_chars_spritesheet(ascii_chars_id);
-	let snaeksheet = spritesheet::snaeksheet(snaeksheet_id);
+	let ascii_chars = snake::spritesheet::ascii_chars_spritesheet(ascii_chars_id);
+	let snaeksheet = snake::spritesheet::snaeksheet(snaeksheet_id);
 
 	let options = WindowOptions {
 		borderless: true,
