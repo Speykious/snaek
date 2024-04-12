@@ -65,11 +65,14 @@ fn load_png_from_memory(png: &[u8]) -> ImageResult<Bitmap> {
 fn game() -> Result<(), Box<dyn Error>> {
     let mut renderer = Renderer::new(Bitmap::new(size(WIDTH, HEIGHT)));
 
-    let bitmap_ascii_chars = renderer.register_spritesheet(load_png_from_memory(IMG_ASCII_CHARS)?);
-    let bitmap_snaeksheet = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
+    let ascii_chars_id = renderer.register_spritesheet(load_png_from_memory(IMG_ASCII_CHARS)?);
+    let snaeksheet_id = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
+
+    let ascii_chars = spritesheet::ascii_chars_spritesheet(ascii_chars_id);
+    let snaeksheet = spritesheet::snaeksheet(snaeksheet_id);
 
     let options = WindowOptions {
-        borderless: false,
+        borderless: true,
         title: true,
         resize: false,
         scale: Scale::X4,
@@ -134,18 +137,44 @@ fn game() -> Result<(), Box<dyn Error>> {
                 acf: alphacomp::dst,
             });
 
-            draw_cmds.push(DrawCommand::BeginComposite);
-            draw_cmds.push(DrawCommand::Fill {
+            draw_cmds.push(DrawCommand::Stroke {
                 rect: renderer.rect(),
-                color: Pixel::from_hex(0x10000000),
-                acf: alphacomp::over,
+                stroke_width: 3,
+                color: Pixel::from_hex(0xff181425),
+                acf: alphacomp::dst,
             });
-            for bounce in &bounces {
+
+            draw_cmds.push(DrawCommand::BeginComposite);
+            {
                 draw_cmds.push(DrawCommand::Fill {
-                    rect: bounce.rect,
-                    color: bounce.pixel,
-                    acf: alphacomp::add,
+                    rect: renderer.rect(),
+                    color: Pixel::from_hex(0x10000000),
+                    acf: alphacomp::over,
                 });
+                for bounce in &bounces {
+                    draw_cmds.push(DrawCommand::Fill {
+                        rect: bounce.rect,
+                        color: bounce.pixel,
+                        acf: alphacomp::add,
+                    });
+                }
+
+                draw_cmds.push(DrawCommand::BeginComposite);
+                {
+                    draw_cmds.push(DrawCommand::Clear);
+                    draw_cmds.push(DrawCommand::Sprite {
+                        pos: Pos::ZERO,
+                        sprite: snaeksheet.snaek_icon,
+                        acf: alphacomp::over,
+                    });
+
+                    draw_cmds.push(DrawCommand::NineSlicingSprite {
+                        rect: Rect::from_xywh(10, 10, 20, 30),
+                        nss: snaeksheet.box_embossed,
+                        acf: alphacomp::over,
+                    });
+                }
+                draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
             }
             draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
         }
