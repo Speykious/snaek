@@ -144,7 +144,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 
             draw_cmds.push(DrawCommand::Stroke {
                 rect: renderer.rect(),
-                stroke_width: 3,
+                stroke_width: 1,
                 color: Pixel::from_hex(0xff181425),
                 acf: alphacomp::dst,
             });
