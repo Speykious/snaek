@@ -8,6 +8,10 @@ pub struct Size {
 	pub h: u16,
 }
 
+impl Size {
+	pub const ZERO: Self = Self { w: 0, h: 0 };
+}
+
 #[inline]
 pub fn size(w: u16, h: u16) -> Size {
 	Size { w, h }

@@ -12,8 +12,10 @@ pub struct Rect {
 }
 
 impl Rect {
+	pub const ZERO: Self = Self::from_xywh(0, 0, 0, 0);
+
 	#[inline]
-	pub fn from_xywh(x: i16, y: i16, w: u16, h: u16) -> Self {
+	pub const fn from_xywh(x: i16, y: i16, w: u16, h: u16) -> Self {
 		Self { x, y, w, h }
 	}
 
@@ -27,7 +29,7 @@ impl Rect {
 	}
 
 	#[inline]
-	pub fn from_pos_size(pos: Pos, size: Size) -> Self {
+	pub const fn from_pos_size(pos: Pos, size: Size) -> Self {
 		Self {
 			x: pos.x,
 			y: pos.y,
@@ -37,12 +39,12 @@ impl Rect {
 	}
 
 	#[inline]
-	pub fn pos(&self) -> Pos {
+	pub const fn pos(&self) -> Pos {
 		Pos { x: self.x, y: self.y }
 	}
 
 	#[inline]
-	pub fn size(&self) -> Size {
+	pub const fn size(&self) -> Size {
 		Size { w: self.w, h: self.h }
 	}
 }
