@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// Size of a rectangle.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(C, align(4))]
 pub struct Size {
 	pub w: u16,
@@ -13,7 +13,7 @@ impl Size {
 }
 
 #[inline]
-pub fn size(w: u16, h: u16) -> Size {
+pub const fn size(w: u16, h: u16) -> Size {
 	Size { w, h }
 }
 

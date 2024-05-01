@@ -2,7 +2,7 @@ use super::pos::Pos;
 use super::size::Size;
 
 /// A rectangle with a position and size.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(C, align(8))]
 pub struct Rect {
 	pub x: i16,

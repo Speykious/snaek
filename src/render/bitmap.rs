@@ -37,7 +37,7 @@ impl Bitmap {
 	}
 
 	fn line_indices(&self, pos: Pos, width: u16) -> (usize, usize) {
-		let start_x = pos.x as usize;
+		let start_x = (self.size.w as usize).min(pos.x as usize);
 		let end_x = (self.size.w as usize).min(width as usize + start_x);
 		let width = end_x - start_x;
 
@@ -77,11 +77,16 @@ impl Bitmap {
 	}
 
 	pub fn copy_bitmap_area(&mut self, other: &Bitmap, this_pos: Pos, other_pos: Pos, size: Size, acf: AlphaCompFn) {
-		let size = {
-			let cropped_rect = self.crop_rect(Rect::from_pos_size(this_pos, size));
-			let cropped_rect = self.crop_rect(Rect::from_pos_size(other_pos, cropped_rect.size()));
-			cropped_rect.size()
-		};
+		let this_cropped_rect = self.crop_rect(Rect::from_pos_size(this_pos, size));
+		let this_pos = this_cropped_rect.pos();
+
+		if (this_pos.x as i32) >= (self.size.w as i32) || (this_pos.y as i32) >= (self.size.h as i32) {
+			return;
+		}
+
+		if (this_pos.x as i32) + (size.w as i32) < 0 || (this_pos.y as i32) + (size.h as i32) < 0 {
+			return;
+		}
 
 		for y in 0..size.h as i16 {
 			let this_line = self.line_mut(pos(this_pos.x, this_pos.y + y), size.w);

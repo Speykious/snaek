@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// Position of something on the bitmap, in pixels.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(C, align(4))]
 pub struct Pos {
 	pub x: i16,
@@ -13,7 +13,7 @@ impl Pos {
 }
 
 #[inline]
-pub fn pos(x: i16, y: i16) -> Pos {
+pub const fn pos(x: i16, y: i16) -> Pos {
 	Pos { x, y }
 }
 

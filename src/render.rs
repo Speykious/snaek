@@ -1,5 +1,4 @@
-use std::cell::RefCell;
-use std::marker::PhantomData;
+use crate::ui::AsciiSheet;
 
 use self::bitmap::Bitmap;
 use self::pixel::alphacomp::{self, AlphaCompFn};
@@ -82,8 +81,8 @@ impl Renderer {
 		self.fb_stack.fb(0)
 	}
 
-	pub fn draw(&mut self, commands: &[DrawCommand]) {
-		draw(commands, &mut self.fb_stack, &self.spritesheets);
+	pub fn draw(&mut self, commands: &[DrawCommand], ascii_sheet: &AsciiSheet) {
+		draw(commands, &mut self.fb_stack, &self.spritesheets, ascii_sheet);
 	}
 
 	pub fn size(&self) -> Size {
@@ -119,11 +118,18 @@ pub enum DrawCommand {
 		nss: NineSlicingSprite,
 		acf: AlphaCompFn,
 	},
+	Text {
+		text: String,
+		pos: Pos,
+		acf: AlphaCompFn,
+	},
 	BeginComposite,
 	EndComposite(AlphaCompFn),
 }
 
-fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets: &[Bitmap]) {
+fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets: &[Bitmap], ascii_sheet: &AsciiSheet) {
+	let ascii_bitmap = &spritesheets[ascii_sheet.space.id.0];
+
 	let mut fb_id = 0;
 	for command in commands {
 		match *command {
@@ -175,6 +181,10 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 
 				'top_left: {
 					let nssp = nss.slice(NineSlicePart::TopLeft);
+					if nssp.rect.w == 0 || nssp.rect.h == 0 {
+						break 'top_left;
+					}
+
 					let nssp_pos = nssp.rect.pos();
 					let nssp_size = nssp.rect.size();
 					(fb_stack.fb_mut(fb_id)).copy_bitmap_area(bitmap, fb_pos, nssp_pos, nssp_size, acf);
@@ -182,7 +192,7 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 
 				'top_center: {
 					let nssp = nss.slice(NineSlicePart::TopCenter);
-					if nssp.rect.w == 0 {
+					if nssp.rect.w == 0 || nssp.rect.h == 0 {
 						break 'top_center;
 					}
 
@@ -203,6 +213,10 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 
 				'top_right: {
 					let nssp = nss.slice(NineSlicePart::TopRight);
+					if nssp.rect.w == 0 || nssp.rect.h == 0 {
+						break 'top_right;
+					}
+
 					let nssp_pos = nssp.rect.pos();
 					let nssp_size = nssp.rect.size();
 					(fb_stack.fb_mut(fb_id)).copy_bitmap_area(
@@ -216,7 +230,7 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 
 				'center_left: {
 					let nssp = nss.slice(NineSlicePart::CenterLeft);
-					if nssp.rect.h == 0 {
+					if nssp.rect.w == 0 || nssp.rect.h == 0 {
 						break 'center_left;
 					}
 
@@ -265,7 +279,7 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 
 				'center_right: {
 					let nssp = nss.slice(NineSlicePart::CenterRight);
-					if nssp.rect.h == 0 {
+					if nssp.rect.w == 0 || nssp.rect.h == 0 {
 						break 'center_right;
 					}
 
@@ -286,6 +300,10 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 
 				'bottom_left: {
 					let nssp = nss.slice(NineSlicePart::BottomLeft);
+					if nssp.rect.w == 0 || nssp.rect.h == 0 {
+						break 'bottom_left;
+					}
+
 					let nssp_pos = nssp.rect.pos();
 					let nssp_size = nssp.rect.size();
 					(fb_stack.fb_mut(fb_id)).copy_bitmap_area(
@@ -299,7 +317,7 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 
 				'bottom_center: {
 					let nssp = nss.slice(NineSlicePart::BottomCenter);
-					if nssp.rect.w == 0 {
+					if nssp.rect.w == 0 || nssp.rect.h == 0 {
 						break 'bottom_center;
 					}
 
@@ -320,6 +338,10 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 
 				'bottom_right: {
 					let nssp = nss.slice(NineSlicePart::BottomRight);
+					if nssp.rect.w == 0 || nssp.rect.h == 0 {
+						break 'bottom_right;
+					}
+
 					let nssp_pos = nssp.rect.pos();
 					let nssp_size = nssp.rect.size();
 					(fb_stack.fb_mut(fb_id)).copy_bitmap_area(
@@ -332,6 +354,110 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 						nssp_size,
 						acf,
 					);
+				}
+			}
+			DrawCommand::Text { pos, ref text, acf } => {
+				let mut pos = pos;
+				let fb = fb_stack.fb_mut(fb_id);
+
+				for &c in text.as_bytes() {
+					let c_sprite = match c {
+						b' ' => ascii_sheet.space,
+
+						b'A' => ascii_sheet.upper_a,
+						b'B' => ascii_sheet.upper_b,
+						b'C' => ascii_sheet.upper_c,
+						b'D' => ascii_sheet.upper_d,
+						b'E' => ascii_sheet.upper_e,
+						b'F' => ascii_sheet.upper_f,
+						b'G' => ascii_sheet.upper_g,
+						b'H' => ascii_sheet.upper_h,
+						b'I' => ascii_sheet.upper_i,
+						b'J' => ascii_sheet.upper_j,
+						b'K' => ascii_sheet.upper_k,
+						b'L' => ascii_sheet.upper_l,
+						b'M' => ascii_sheet.upper_m,
+						b'N' => ascii_sheet.upper_n,
+						b'O' => ascii_sheet.upper_o,
+						b'P' => ascii_sheet.upper_p,
+						b'Q' => ascii_sheet.upper_q,
+						b'R' => ascii_sheet.upper_r,
+						b'S' => ascii_sheet.upper_s,
+						b'T' => ascii_sheet.upper_t,
+						b'U' => ascii_sheet.upper_u,
+						b'V' => ascii_sheet.upper_v,
+						b'W' => ascii_sheet.upper_w,
+						b'X' => ascii_sheet.upper_x,
+						b'Y' => ascii_sheet.upper_y,
+						b'Z' => ascii_sheet.upper_z,
+
+						b'a' => ascii_sheet.lower_a,
+						b'b' => ascii_sheet.lower_b,
+						b'c' => ascii_sheet.lower_c,
+						b'd' => ascii_sheet.lower_d,
+						b'e' => ascii_sheet.lower_e,
+						b'f' => ascii_sheet.lower_f,
+						b'g' => ascii_sheet.lower_g,
+						b'h' => ascii_sheet.lower_h,
+						b'i' => ascii_sheet.lower_i,
+						b'j' => ascii_sheet.lower_j,
+						b'k' => ascii_sheet.lower_k,
+						b'l' => ascii_sheet.lower_l,
+						b'm' => ascii_sheet.lower_m,
+						b'n' => ascii_sheet.lower_n,
+						b'o' => ascii_sheet.lower_o,
+						b'p' => ascii_sheet.lower_p,
+						b'q' => ascii_sheet.lower_q,
+						b'r' => ascii_sheet.lower_r,
+						b's' => ascii_sheet.lower_s,
+						b't' => ascii_sheet.lower_t,
+						b'u' => ascii_sheet.lower_u,
+						b'v' => ascii_sheet.lower_v,
+						b'w' => ascii_sheet.lower_w,
+						b'x' => ascii_sheet.lower_x,
+						b'y' => ascii_sheet.lower_y,
+						b'z' => ascii_sheet.lower_z,
+
+						b'0' => ascii_sheet.digit_0,
+						b'1' => ascii_sheet.digit_1,
+						b'2' => ascii_sheet.digit_2,
+						b'3' => ascii_sheet.digit_3,
+						b'4' => ascii_sheet.digit_4,
+						b'5' => ascii_sheet.digit_5,
+						b'6' => ascii_sheet.digit_6,
+						b'7' => ascii_sheet.digit_7,
+						b'8' => ascii_sheet.digit_8,
+						b'9' => ascii_sheet.digit_9,
+
+						b'!' => ascii_sheet.exclamation_mark,
+						b'?' => ascii_sheet.question_mark,
+						b':' => ascii_sheet.colon,
+						b';' => ascii_sheet.semicolon,
+						b',' => ascii_sheet.comma,
+						b'.' => ascii_sheet.period,
+						b'*' => ascii_sheet.star,
+						b'#' => ascii_sheet.hashtag,
+						b'\'' => ascii_sheet.single_quote,
+						b'"' => ascii_sheet.double_quote,
+						b'[' => ascii_sheet.bracket_l,
+						b']' => ascii_sheet.bracket_r,
+						b'(' => ascii_sheet.parens_l,
+						b')' => ascii_sheet.parens_r,
+						b'{' => ascii_sheet.brace_l,
+						b'}' => ascii_sheet.brace_r,
+						b'<' => ascii_sheet.less_than,
+						b'>' => ascii_sheet.greater_than,
+						b'-' => ascii_sheet.minus,
+						b'+' => ascii_sheet.plus,
+						b'/' => ascii_sheet.slash,
+						b'=' => ascii_sheet.equals,
+						b'_' => ascii_sheet.underscore,
+
+						_ => ascii_sheet.question_mark,
+					};
+
+					fb.copy_bitmap_area(ascii_bitmap, pos, c_sprite.rect.pos(), c_sprite.rect.size(), acf);
+					pos.x += c_sprite.rect.w as i16 + 1;
 				}
 			}
 			DrawCommand::BeginComposite => {

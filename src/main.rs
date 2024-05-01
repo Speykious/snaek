@@ -1,9 +1,7 @@
 // TODO: remove this thing as soon as possible
-#![allow(unused)]
+// #![allow(unused)]
 
 use std::error::Error;
-use std::fs::File;
-use std::io::{Read, Write};
 use std::time::Duration;
 
 use self::math::pos::{pos, Pos};
@@ -12,9 +10,12 @@ use self::math::size::size;
 use self::render::bitmap::Bitmap;
 use self::render::pixel::{alphacomp, Pixel};
 use image::{ImageFormat, ImageResult};
+use math::size::Size;
 use minifb::{Key, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::{DrawCommand, Renderer};
+use snake::SnaekSheet;
+use ui::{Anchor, FlexDirection, UiContext, WidgetDim, WidgetLayout, WidgetSize};
 
 mod math;
 mod render;
@@ -62,14 +63,17 @@ fn load_png_from_memory(png: &[u8]) -> ImageResult<Bitmap> {
 	Ok(Bitmap::from_buffer(buffer, size))
 }
 
+const VIEWPORT_SIZE: Size = size(WIDTH, HEIGHT);
+
 fn game() -> Result<(), Box<dyn Error>> {
-	let mut renderer = Renderer::new(Bitmap::new(size(WIDTH, HEIGHT)));
+	let mut renderer = Renderer::new(Bitmap::new(VIEWPORT_SIZE));
+	let mut ui = UiContext::new(VIEWPORT_SIZE);
 
 	let ascii_chars_id = renderer.register_spritesheet(load_png_from_memory(IMG_ASCII_CHARS)?);
-	let snaeksheet_id = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
+	let snaek_sheet_id = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
 
-	let ascii_chars = snake::spritesheet::ascii_chars_spritesheet(ascii_chars_id);
-	let snaeksheet = snake::spritesheet::snaeksheet(snaeksheet_id);
+	let ascii_sheet = ui::ascii_sheet(ascii_chars_id);
+	let snaek_sheet = snake::snaek_sheet(snaek_sheet_id);
 
 	let options = WindowOptions {
 		borderless: true,
@@ -104,6 +108,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 		},
 	];
 
+	let mut draw_cmds = Vec::new();
 	let mut mouse_pos = Pos::ZERO;
 	while window.is_open() {
 		// input handling
@@ -133,57 +138,57 @@ fn game() -> Result<(), Box<dyn Error>> {
 			bounce.rect.y += bounce.dpos.y;
 		}
 
-		// drawing
-		let mut draw_cmds = Vec::new();
+		draw_cmds.clear();
+
+		ui.clear_draws();
+		ui.push_draw(DrawCommand::Clear);
+		ui.push_draw(DrawCommand::Fill {
+			rect: renderer.rect(),
+			color: Pixel::from_hex(0xff262b44),
+			acf: alphacomp::dst,
+		});
+
+		ui.push_draw(DrawCommand::Stroke {
+			rect: renderer.rect(),
+			stroke_width: 1,
+			color: Pixel::from_hex(0xff181425),
+			acf: alphacomp::dst,
+		});
+
+		ui.flush_draws(&mut draw_cmds);
+		draw_rectangles_bouncing(&renderer, &bounces, &snaek_sheet, mouse_pos, &mut draw_cmds);
+
+		ui.push_draw(DrawCommand::BeginComposite);
 		{
-			draw_cmds.push(DrawCommand::Fill {
-				rect: renderer.rect(),
-				color: Pixel::from_hex(0xff262b44),
-				acf: alphacomp::dst,
-			});
+			ui.push_draw(DrawCommand::Clear);
 
-			draw_cmds.push(DrawCommand::Stroke {
-				rect: renderer.rect(),
-				stroke_width: 1,
-				color: Pixel::from_hex(0xff181425),
-				acf: alphacomp::dst,
-			});
+			// drawing
+			let frame_id = ui.frame(
+				wk!(),
+				Anchor::CENTER,
+				Anchor::CENTER,
+				WidgetSize {
+					w: WidgetDim::Hug,
+					h: WidgetDim::Hug,
+				},
+				WidgetLayout::Flex {
+					direction: FlexDirection::Horizontal,
+					gap: 2,
+				},
+			);
 
-			draw_cmds.push(DrawCommand::BeginComposite);
-			{
-				draw_cmds.push(DrawCommand::Fill {
-					rect: renderer.rect(),
-					color: Pixel::from_hex(0x10000000),
-					acf: alphacomp::over,
-				});
-				for bounce in &bounces {
-					draw_cmds.push(DrawCommand::Fill {
-						rect: bounce.rect,
-						color: bounce.pixel,
-						acf: alphacomp::add,
-					});
-				}
+			let uwu_button_id = ui.button(wk!(), "UwU", snaek_sheet.box_embossed, snaek_sheet.box_carved);
+			ui.add_child(frame_id, uwu_button_id);
 
-				draw_cmds.push(DrawCommand::BeginComposite);
-				{
-					draw_cmds.push(DrawCommand::Clear);
-					draw_cmds.push(DrawCommand::Sprite {
-						pos: Pos::ZERO,
-						sprite: snaeksheet.snaek_icon,
-						acf: alphacomp::over,
-					});
-
-					draw_cmds.push(DrawCommand::NineSlicingSprite {
-						rect: Rect::from_ab(pos(10, 10), mouse_pos),
-						nss: snaeksheet.box_embossed,
-						acf: alphacomp::over,
-					});
-				}
-				draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
-			}
-			draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
+			let owo_button_id = ui.button(wk!(), "OwO", snaek_sheet.box_embossed, snaek_sheet.box_carved);
+			ui.add_child(frame_id, owo_button_id);
 		}
-		renderer.draw(&draw_cmds);
+		ui.push_draw(DrawCommand::EndComposite(alphacomp::over));
+		ui.flush_draws(&mut draw_cmds);
+
+		renderer.draw(&draw_cmds, &ascii_sheet);
+		ui.solve_layout();
+		ui.free_untouched_widgets();
 
 		window
 			.update_with_buffer(renderer.first_framebuffer().pixels(), WIDTH as usize, HEIGHT as usize)
@@ -191,4 +196,53 @@ fn game() -> Result<(), Box<dyn Error>> {
 	}
 
 	Ok(())
+}
+
+fn draw_rectangles_bouncing(
+	renderer: &Renderer,
+	bounces: &[Bounce],
+	snaek_sheet: &SnaekSheet,
+	mouse_pos: Pos,
+	draw_cmds: &mut Vec<DrawCommand>,
+) {
+	draw_cmds.push(DrawCommand::BeginComposite);
+	{
+		draw_cmds.push(DrawCommand::Fill {
+			rect: renderer.rect(),
+			color: Pixel::from_hex(0x10000000),
+			acf: alphacomp::over,
+		});
+
+		for bounce in bounces {
+			draw_cmds.push(DrawCommand::Fill {
+				rect: bounce.rect,
+				color: bounce.pixel,
+				acf: alphacomp::add,
+			});
+		}
+
+		draw_cmds.push(DrawCommand::BeginComposite);
+		{
+			draw_cmds.push(DrawCommand::Clear);
+			draw_cmds.push(DrawCommand::Sprite {
+				pos: Pos::ZERO,
+				sprite: snaek_sheet.snaek_icon,
+				acf: alphacomp::over,
+			});
+
+			// draw_cmds.push(DrawCommand::NineSlicingSprite {
+			// 	rect: Rect::from_ab(pos(10, 10), mouse_pos),
+			// 	nss: snaek_sheet.box_embossed,
+			// 	acf: alphacomp::over,
+			// });
+
+			draw_cmds.push(DrawCommand::Text {
+				pos: pos(12, 12),
+				text: "Hello, world!".to_string(),
+				acf: alphacomp::over,
+			});
+		}
+		draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
+	}
+	draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
 }
