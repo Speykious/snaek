@@ -1,5 +1,5 @@
 // TODO: remove this thing as soon as possible
-// #![allow(unused)]
+#![allow(unused)]
 
 use std::error::Error;
 use std::time::Duration;
@@ -229,12 +229,6 @@ fn draw_rectangles_bouncing(
 				sprite: snaek_sheet.snaek_icon,
 				acf: alphacomp::over,
 			});
-
-			// draw_cmds.push(DrawCommand::NineSlicingSprite {
-			// 	rect: Rect::from_ab(pos(10, 10), mouse_pos),
-			// 	nss: snaek_sheet.box_embossed,
-			// 	acf: alphacomp::over,
-			// });
 
 			draw_cmds.push(DrawCommand::Text {
 				pos: pos(12, 12),

@@ -397,7 +397,7 @@ impl UiContext {
 	}
 
 	pub fn flush_draws(&mut self, out_cmds: &mut Vec<DrawCommand>) {
-		out_cmds.extend(self.draw_commands.drain(..));
+		out_cmds.append(&mut self.draw_commands);
 	}
 
 	pub fn draw_commands(&self) -> &[DrawCommand] {
