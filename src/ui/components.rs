@@ -36,7 +36,7 @@ impl UiContext {
 			origin: Anchor::CENTER,
 			offset: pos(0, 0),
 			size: WidgetSize {
-				w: WidgetDim::Fixed(25),
+				w: WidgetDim::Fixed(30),
 				h: WidgetDim::Fixed(9),
 			},
 			padding: WidgetPadding::default(),

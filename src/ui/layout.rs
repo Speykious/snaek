@@ -165,88 +165,112 @@ impl UiContext {
 					child_id = self.widget(child).next;
 				}
 			}
-			WidgetLayout::Flex { direction, gap } => {
-				match direction {
-					FlexDirection::Horizontal => {
-						let fills_count = self.children_fills_count(wid);
+			WidgetLayout::Flex { direction, gap } => match direction {
+				FlexDirection::Horizontal => {
+					let fills_count = self.children_fills_count(wid);
 
-						let filling_width = if fills_count == 0 {
-							0
-						} else {
-							let mut fixed_width: isize = 0;
-
-							let widget = self.widget(wid);
-							let mut child_id = widget.first_child;
-							while let Some(child) = child_id {
-								let child = self.widget(child);
-								match child.size.w {
-									WidgetDim::Fill => (),
-									_ => fixed_width += child.solved_rect.w as isize,
-								}
-								child_id = child.next;
-							}
-
-							let gap_width = gap as isize * widget.children_count.saturating_sub(1) as isize;
-							let leftover_width = (inner_solved_rect.w as isize - fixed_width - gap_width).max(0);
-
-							(leftover_width / fills_count as isize) as u16
-						};
-
-						let mut x = inner_solved_rect.x;
+					let filling_width = if fills_count == 0 {
+						0
+					} else {
+						let mut fixed_width: isize = 0;
 
 						let widget = self.widget(wid);
 						let mut child_id = widget.first_child;
 						while let Some(child) = child_id {
-							let (child_w, solved_w, child_next) = {
-								let child = self.widget(child);
-								(child.size.w, child.solved_rect.w, child.next)
-							};
-
-							let child_width = match child_w {
-								WidgetDim::Fill => filling_width,
-								_ => solved_w,
-							};
-
-							let inner_solved_rect = Rect {
-								x,
-								w: child_width,
-								..inner_solved_rect
-							};
-
-							self.solve_rects_rec(child, inner_solved_rect);
-
-							x += child_width as i16 + gap;
-							child_id = child_next;
+							let child = self.widget(child);
+							match child.size.w {
+								WidgetDim::Fill => (),
+								_ => fixed_width += child.solved_rect.w as isize,
+							}
+							child_id = child.next;
 						}
-					}
-					FlexDirection::Vertical => {
-						// let fills_count = (children.iter())
-						// 	.filter(|child| child.widget.layout().height.is_fill())
-						// 	.count();
 
-						// let filling_height = if fills_count == 0 {
-						// 	0.
-						// } else {
-						// 	let fixed_height: f32 = (children.iter())
-						// 		.filter_map(|child| solve_height(child.widget.as_ref()))
-						// 		.sum();
+						let gap_width = gap as isize * widget.children_count.saturating_sub(1) as isize;
+						let leftover_width = (inner_solved_rect.w as isize - fixed_width - gap_width).max(0);
 
-						// 	let gap_width = flex.gap * children.len().saturating_sub(1) as f32;
-						// 	let leftover_height = (inner_layout.height() - fixed_height - gap_width).max(0.);
-						// 	leftover_height / fills_count as f32
-						// };
+						(leftover_width / fills_count as isize) as u16
+					};
 
-						// let mut y = inner_layout.y_start();
-						// for child in children.iter_mut() {
-						// 	let child_height = solve_height(child.widget.as_ref()).unwrap_or(filling_height);
-						// 	let inner_layout = inner_layout.with_height(child_height).with_y(y);
-						// 	child.solved_layout = child.widget.solve_layout(&inner_layout);
+					let mut x = inner_solved_rect.x;
 
-						// 	y += child_height + flex.gap;
-						// }
+					let widget = self.widget(wid);
+					let mut child_id = widget.first_child;
+					while let Some(child) = child_id {
+						let (child_w, solved_w, child_next) = {
+							let child = self.widget(child);
+							(child.size.w, child.solved_rect.w, child.next)
+						};
+
+						let child_width = match child_w {
+							WidgetDim::Fill => filling_width,
+							_ => solved_w,
+						};
+
+						let inner_solved_rect = Rect {
+							x,
+							w: child_width,
+							..inner_solved_rect
+						};
+
+						self.solve_rects_rec(child, inner_solved_rect);
+
+						x += child_width as i16 + gap;
+						child_id = child_next;
 					}
 				}
-			}
+				FlexDirection::Vertical => {
+					let fills_count = self.children_fills_count(wid);
+
+					let filling_height = if fills_count == 0 {
+						0
+					} else {
+						let mut fixed_height: isize = 0;
+
+						let widget = self.widget(wid);
+						let mut child_id = widget.first_child;
+						while let Some(child) = child_id {
+							let child = self.widget(child);
+							match child.size.h {
+								WidgetDim::Fill => (),
+								_ => fixed_height += child.solved_rect.h as isize,
+							}
+							child_id = child.next;
+						}
+
+						let gap_height = gap as isize * widget.children_count.saturating_sub(1) as isize;
+						let leftover_height = (inner_solved_rect.h as isize - fixed_height - gap_height).max(0);
+
+						(leftover_height / fills_count as isize) as u16
+					};
+
+					let mut y = inner_solved_rect.y;
+
+					let widget = self.widget(wid);
+					let mut child_id = widget.first_child;
+					while let Some(child) = child_id {
+						let (child_h, solved_h, child_next) = {
+							let child = self.widget(child);
+							(child.size.h, child.solved_rect.h, child.next)
+						};
+
+						let child_height = match child_h {
+							WidgetDim::Fill => filling_height,
+							_ => solved_h,
+						};
+
+						let inner_solved_rect = Rect {
+							y,
+							h: child_height,
+							..inner_solved_rect
+						};
+
+						self.solve_rects_rec(child, inner_solved_rect);
+
+						y += child_height as i16 + gap;
+						child_id = child_next;
+					}
+				}
+			},
 		}
 	}
 

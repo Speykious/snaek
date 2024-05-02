@@ -172,16 +172,18 @@ fn game() -> Result<(), Box<dyn Error>> {
 					h: WidgetDim::Hug,
 				},
 				WidgetLayout::Flex {
-					direction: FlexDirection::Horizontal,
+					direction: FlexDirection::Vertical,
 					gap: 2,
 				},
 			);
 
-			let uwu_button_id = ui.button(wk!(), "UwU", snaek_sheet.box_embossed, snaek_sheet.box_carved);
-			ui.add_child(frame_id, uwu_button_id);
-
-			let owo_button_id = ui.button(wk!(), "OwO", snaek_sheet.box_embossed, snaek_sheet.box_carved);
-			ui.add_child(frame_id, owo_button_id);
+			for i in 0..3 {
+				let uwu_button_id = ui.button(wk!(i), "UwU", snaek_sheet.box_embossed, snaek_sheet.box_carved);
+				ui.add_child(frame_id, uwu_button_id);
+				
+				let owo_button_id = ui.button(wk!(i), "OwO", snaek_sheet.box_embossed, snaek_sheet.box_carved);
+				ui.add_child(frame_id, owo_button_id);
+			}
 		}
 		ui.push_draw(DrawCommand::EndComposite(alphacomp::over));
 		ui.flush_draws(&mut draw_cmds);
