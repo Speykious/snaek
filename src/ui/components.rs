@@ -1,61 +1,80 @@
-use crate::math::pos::pos;
-use crate::render::pixel::alphacomp;
+use crate::math::pos::{pos, Pos};
+use crate::render::color::{alphacomp, Color};
 use crate::render::sprite::NineSlicingSprite;
-use crate::render::DrawCommand;
+use crate::render::{DrawCommand, Text, SpritesheetId};
+use crate::wk;
 
 use super::{
-	Anchor, UiContext, WidgetBuilder, WidgetDim, WidgetFlags, WidgetId, WidgetKey, WidgetLayout,
-	WidgetPadding, WidgetSize,
+	Anchor, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetKey, WidgetLayout, WidgetPadding, WidgetProps,
+	WidgetSize,
 };
 
 impl UiContext {
-	pub fn frame(&mut self, key: WidgetKey, anchor: Anchor, origin: Anchor, size: WidgetSize, layout: WidgetLayout) -> WidgetId {
-		self.build_widget(WidgetBuilder {
+	pub fn frame(
+		&mut self,
+		key: WidgetKey,
+		anchor: Anchor,
+		origin: Anchor,
+		size: WidgetSize,
+		layout: WidgetLayout,
+	) -> WidgetId {
+		self.build_widget(WidgetProps {
 			key,
-			flags: WidgetFlags::NONE, // The flags don't do anything rn...
+
 			anchor,
 			origin,
-			offset: pos(0, 0),
 			size,
-			padding: WidgetPadding::default(),
 			layout,
+
+			..WidgetProps::default()
+		})
+	}
+
+	pub fn text(&mut self, key: WidgetKey, text: Text, anchor: Anchor, origin: Anchor) -> WidgetId {
+		self.build_widget(WidgetProps {
+			key,
+
+			flags: WidgetFlags::DRAW_TEXT,
+			text: Some(text),
+
+			anchor,
+			origin,
+			size: WidgetSize {
+				w: WidgetDim::Hug,
+				h: WidgetDim::Hug,
+			},
+
+			..WidgetProps::default()
 		})
 	}
 
 	pub fn button(
 		&mut self,
 		key: WidgetKey,
-		text: &str,
-		normal_nss: NineSlicingSprite,
-		hover_nss: NineSlicingSprite,
+		text: Text,
+		size: WidgetSize,
+		normal_nss: (SpritesheetId, NineSlicingSprite),
+		hover_nss: (SpritesheetId, NineSlicingSprite),
 	) -> WidgetId {
-		let wid = self.build_widget(WidgetBuilder {
+		use WidgetFlags as Wf;
+
+		let button_id = self.build_widget(WidgetProps {
 			key,
-			flags: WidgetFlags::NONE, // The flags don't do anything rn...
+
+			flags: Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::DRAW_NINE_SLICE,
+			nss: Some(normal_nss),
+
 			anchor: Anchor::CENTER,
 			origin: Anchor::CENTER,
-			offset: pos(0, 0),
-			size: WidgetSize {
-				w: WidgetDim::Fixed(30),
-				h: WidgetDim::Fixed(9),
-			},
-			padding: WidgetPadding::default(),
-			layout: WidgetLayout::Stacked,
+			padding: WidgetPadding::all(2),
+			size,
+
+			..WidgetProps::default()
 		});
 
-		let rect = self.widget(wid).solved_rect;
+		let text_id = self.text(wk!([key]), text, Anchor::CENTER, Anchor::CENTER);
+		self.add_child(button_id, text_id);
 
-		self.push_draw(DrawCommand::NineSlicingSprite {
-			rect,
-			nss: normal_nss,
-			acf: alphacomp::over,
-		});
-		self.push_draw(DrawCommand::Text {
-			text: text.to_string(),
-			pos: rect.pos() + pos(2, 2),
-			acf: alphacomp::over,
-		});
-
-		wid
+		button_id
 	}
 }

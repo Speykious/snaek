@@ -1,16 +1,19 @@
-use crate::ui::AsciiSheet;
+use std::sync::Arc;
 
 use self::bitmap::Bitmap;
-use self::pixel::alphacomp::{self, AlphaCompFn};
-use self::pixel::Pixel;
+use self::color::alphacomp::{self, AlphaCompFn};
+use self::color::Color;
 use self::sprite::{NineSlicePart, NineSlicingSprite, Sprite};
 use super::math::pos::{pos, Pos};
 use super::math::rect::Rect;
 use super::math::size::{size, Size};
 
+pub mod ascii_sheet;
 pub mod bitmap;
-pub mod pixel;
+pub mod color;
 pub mod sprite;
+
+pub use ascii_sheet::{ascii_sheet, AsciiSheet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SpritesheetId(usize);
@@ -60,13 +63,17 @@ impl FramebufferStack {
 
 pub struct Renderer {
 	fb_stack: FramebufferStack,
+	ascii_bitmap: Bitmap,
+	ascii_sheet: AsciiSheet,
 	spritesheets: Vec<Bitmap>,
 }
 
 impl Renderer {
-	pub fn new(framebuffer: Bitmap) -> Self {
+	pub fn new(framebuffer: Bitmap, ascii_bitmap: Bitmap) -> Self {
 		Self {
 			fb_stack: FramebufferStack::new(framebuffer),
+			ascii_bitmap,
+			ascii_sheet: ascii_sheet(),
 			spritesheets: Vec::new(),
 		}
 	}
@@ -81,8 +88,39 @@ impl Renderer {
 		self.fb_stack.fb(0)
 	}
 
-	pub fn draw(&mut self, commands: &[DrawCommand], ascii_sheet: &AsciiSheet) {
-		draw(commands, &mut self.fb_stack, &self.spritesheets, ascii_sheet);
+	#[inline]
+	pub fn text<S>(&self, text: S) -> Text
+	where
+		Arc<str>: From<S>,
+	{
+		self.text_inner(Arc::<str>::from(text))
+	}
+
+	fn text_inner(&self, text: Arc<str>) -> Text {
+		let mut size = Size::ZERO;
+
+		for &c in text.as_bytes() {
+			let c_sprite = ascii_char_to_sprite(c, &self.ascii_sheet);
+
+			if size.w != 0 {
+				size.w += 1;
+			}
+
+			size.w += c_sprite.w;
+			size.h = size.h.max(c_sprite.h);
+		}
+
+		Text { text, size }
+	}
+
+	pub fn draw(&mut self, commands: &[DrawCommand]) {
+		draw(
+			commands,
+			&mut self.fb_stack,
+			&self.spritesheets,
+			&self.ascii_sheet,
+			&self.ascii_bitmap,
+		);
 	}
 
 	pub fn size(&self) -> Size {
@@ -94,32 +132,51 @@ impl Renderer {
 	}
 }
 
+/// A piece of measured text.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Text {
+	text: Arc<str>,
+	size: Size,
+}
+
+impl Text {
+	pub fn text(&self) -> &Arc<str> {
+		&self.text
+	}
+
+	pub fn size(&self) -> Size {
+		self.size
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DrawCommand {
 	Clear,
 	Fill {
 		rect: Rect,
-		color: Pixel,
+		color: Color,
 		acf: AlphaCompFn,
 	},
 	Stroke {
 		rect: Rect,
 		stroke_width: u16,
-		color: Pixel,
+		color: Color,
 		acf: AlphaCompFn,
 	},
 	Sprite {
 		pos: Pos,
+		sheet_id: SpritesheetId,
 		sprite: Sprite,
 		acf: AlphaCompFn,
 	},
 	NineSlicingSprite {
 		rect: Rect,
+		sheet_id: SpritesheetId,
 		nss: NineSlicingSprite,
 		acf: AlphaCompFn,
 	},
 	Text {
-		text: String,
+		text: Arc<str>,
 		pos: Pos,
 		acf: AlphaCompFn,
 	},
@@ -127,13 +184,17 @@ pub enum DrawCommand {
 	EndComposite(AlphaCompFn),
 }
 
-fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets: &[Bitmap], ascii_sheet: &AsciiSheet) {
-	let ascii_bitmap = &spritesheets[ascii_sheet.space.id.0];
-
+fn draw(
+	commands: &[DrawCommand],
+	fb_stack: &mut FramebufferStack,
+	spritesheets: &[Bitmap],
+	ascii_sheet: &AsciiSheet,
+	ascii_bitmap: &Bitmap,
+) {
 	let mut fb_id = 0;
 	for command in commands {
 		match *command {
-			DrawCommand::Clear => (fb_stack.fb_mut(fb_id)).fill(Pixel::ZERO, alphacomp::dst),
+			DrawCommand::Clear => (fb_stack.fb_mut(fb_id)).fill(Color::ZERO, alphacomp::dst),
 			DrawCommand::Fill { rect, color, acf } => (fb_stack.fb_mut(fb_id)).fill_area(color, rect, acf),
 			DrawCommand::Stroke {
 				rect,
@@ -141,6 +202,10 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 				color,
 				acf,
 			} => {
+				if rect.w == 0 || rect.h == 0 {
+					continue;
+				}
+
 				let hsize = size(rect.w, stroke_width);
 				let vsize = size(stroke_width, rect.h - 2 * stroke_width);
 				let lry = rect.y + stroke_width as i16;
@@ -161,19 +226,33 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 				let right_rect = Rect::from_pos_size(right_pos, vsize);
 				(fb_stack.fb_mut(fb_id)).fill_area(color, right_rect, acf);
 			}
-			DrawCommand::Sprite { pos, sprite, acf } => {
-				let Some(bitmap) = spritesheets.get(sprite.id.0) else {
+			DrawCommand::Sprite {
+				pos,
+				sheet_id,
+				sprite,
+				acf,
+			} => {
+				if sprite.w == 0 || sprite.h == 0 {
+					continue;
+				}
+
+				let Some(bitmap) = spritesheets.get(sheet_id.0) else {
 					continue;
 				};
 
 				(fb_stack.fb_mut(fb_id)).copy_bitmap_area(bitmap, pos, sprite.rect.pos(), sprite.rect.size(), acf);
 			}
-			DrawCommand::NineSlicingSprite { rect, nss, acf } => {
+			DrawCommand::NineSlicingSprite {
+				rect,
+				sheet_id,
+				nss,
+				acf,
+			} => {
 				if rect.w == 0 || rect.h == 0 {
 					continue;
 				}
 
-				let Some(bitmap) = spritesheets.get(nss.sprite.id.0) else {
+				let Some(bitmap) = spritesheets.get(sheet_id.0) else {
 					continue;
 				};
 
@@ -361,103 +440,10 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 				let fb = fb_stack.fb_mut(fb_id);
 
 				for &c in text.as_bytes() {
-					let c_sprite = match c {
-						b' ' => ascii_sheet.space,
+					let c_sprite = ascii_char_to_sprite(c, ascii_sheet);
 
-						b'A' => ascii_sheet.upper_a,
-						b'B' => ascii_sheet.upper_b,
-						b'C' => ascii_sheet.upper_c,
-						b'D' => ascii_sheet.upper_d,
-						b'E' => ascii_sheet.upper_e,
-						b'F' => ascii_sheet.upper_f,
-						b'G' => ascii_sheet.upper_g,
-						b'H' => ascii_sheet.upper_h,
-						b'I' => ascii_sheet.upper_i,
-						b'J' => ascii_sheet.upper_j,
-						b'K' => ascii_sheet.upper_k,
-						b'L' => ascii_sheet.upper_l,
-						b'M' => ascii_sheet.upper_m,
-						b'N' => ascii_sheet.upper_n,
-						b'O' => ascii_sheet.upper_o,
-						b'P' => ascii_sheet.upper_p,
-						b'Q' => ascii_sheet.upper_q,
-						b'R' => ascii_sheet.upper_r,
-						b'S' => ascii_sheet.upper_s,
-						b'T' => ascii_sheet.upper_t,
-						b'U' => ascii_sheet.upper_u,
-						b'V' => ascii_sheet.upper_v,
-						b'W' => ascii_sheet.upper_w,
-						b'X' => ascii_sheet.upper_x,
-						b'Y' => ascii_sheet.upper_y,
-						b'Z' => ascii_sheet.upper_z,
-
-						b'a' => ascii_sheet.lower_a,
-						b'b' => ascii_sheet.lower_b,
-						b'c' => ascii_sheet.lower_c,
-						b'd' => ascii_sheet.lower_d,
-						b'e' => ascii_sheet.lower_e,
-						b'f' => ascii_sheet.lower_f,
-						b'g' => ascii_sheet.lower_g,
-						b'h' => ascii_sheet.lower_h,
-						b'i' => ascii_sheet.lower_i,
-						b'j' => ascii_sheet.lower_j,
-						b'k' => ascii_sheet.lower_k,
-						b'l' => ascii_sheet.lower_l,
-						b'm' => ascii_sheet.lower_m,
-						b'n' => ascii_sheet.lower_n,
-						b'o' => ascii_sheet.lower_o,
-						b'p' => ascii_sheet.lower_p,
-						b'q' => ascii_sheet.lower_q,
-						b'r' => ascii_sheet.lower_r,
-						b's' => ascii_sheet.lower_s,
-						b't' => ascii_sheet.lower_t,
-						b'u' => ascii_sheet.lower_u,
-						b'v' => ascii_sheet.lower_v,
-						b'w' => ascii_sheet.lower_w,
-						b'x' => ascii_sheet.lower_x,
-						b'y' => ascii_sheet.lower_y,
-						b'z' => ascii_sheet.lower_z,
-
-						b'0' => ascii_sheet.digit_0,
-						b'1' => ascii_sheet.digit_1,
-						b'2' => ascii_sheet.digit_2,
-						b'3' => ascii_sheet.digit_3,
-						b'4' => ascii_sheet.digit_4,
-						b'5' => ascii_sheet.digit_5,
-						b'6' => ascii_sheet.digit_6,
-						b'7' => ascii_sheet.digit_7,
-						b'8' => ascii_sheet.digit_8,
-						b'9' => ascii_sheet.digit_9,
-
-						b'!' => ascii_sheet.exclamation_mark,
-						b'?' => ascii_sheet.question_mark,
-						b':' => ascii_sheet.colon,
-						b';' => ascii_sheet.semicolon,
-						b',' => ascii_sheet.comma,
-						b'.' => ascii_sheet.period,
-						b'*' => ascii_sheet.star,
-						b'#' => ascii_sheet.hashtag,
-						b'\'' => ascii_sheet.single_quote,
-						b'"' => ascii_sheet.double_quote,
-						b'[' => ascii_sheet.bracket_l,
-						b']' => ascii_sheet.bracket_r,
-						b'(' => ascii_sheet.parens_l,
-						b')' => ascii_sheet.parens_r,
-						b'{' => ascii_sheet.brace_l,
-						b'}' => ascii_sheet.brace_r,
-						b'<' => ascii_sheet.less_than,
-						b'>' => ascii_sheet.greater_than,
-						b'-' => ascii_sheet.minus,
-						b'+' => ascii_sheet.plus,
-						b'/' => ascii_sheet.slash,
-						b'=' => ascii_sheet.equals,
-						b'_' => ascii_sheet.underscore,
-
-						_ => ascii_sheet.question_mark,
-					};
-
-					fb.copy_bitmap_area(ascii_bitmap, pos, c_sprite.rect.pos(), c_sprite.rect.size(), acf);
-					pos.x += c_sprite.rect.w as i16 + 1;
+					fb.copy_bitmap_area(ascii_bitmap, pos, c_sprite.pos(), c_sprite.size(), acf);
+					pos.x += c_sprite.w as i16 + 1;
 				}
 			}
 			DrawCommand::BeginComposite => {
@@ -468,5 +454,102 @@ fn draw(commands: &[DrawCommand], fb_stack: &mut FramebufferStack, spritesheets:
 				fb_id -= 1;
 			}
 		}
+	}
+}
+
+fn ascii_char_to_sprite(c: u8, ascii_sheet: &AsciiSheet) -> Sprite {
+	match c {
+		b' ' => ascii_sheet.space,
+
+		b'A' => ascii_sheet.upper_a,
+		b'B' => ascii_sheet.upper_b,
+		b'C' => ascii_sheet.upper_c,
+		b'D' => ascii_sheet.upper_d,
+		b'E' => ascii_sheet.upper_e,
+		b'F' => ascii_sheet.upper_f,
+		b'G' => ascii_sheet.upper_g,
+		b'H' => ascii_sheet.upper_h,
+		b'I' => ascii_sheet.upper_i,
+		b'J' => ascii_sheet.upper_j,
+		b'K' => ascii_sheet.upper_k,
+		b'L' => ascii_sheet.upper_l,
+		b'M' => ascii_sheet.upper_m,
+		b'N' => ascii_sheet.upper_n,
+		b'O' => ascii_sheet.upper_o,
+		b'P' => ascii_sheet.upper_p,
+		b'Q' => ascii_sheet.upper_q,
+		b'R' => ascii_sheet.upper_r,
+		b'S' => ascii_sheet.upper_s,
+		b'T' => ascii_sheet.upper_t,
+		b'U' => ascii_sheet.upper_u,
+		b'V' => ascii_sheet.upper_v,
+		b'W' => ascii_sheet.upper_w,
+		b'X' => ascii_sheet.upper_x,
+		b'Y' => ascii_sheet.upper_y,
+		b'Z' => ascii_sheet.upper_z,
+
+		b'a' => ascii_sheet.lower_a,
+		b'b' => ascii_sheet.lower_b,
+		b'c' => ascii_sheet.lower_c,
+		b'd' => ascii_sheet.lower_d,
+		b'e' => ascii_sheet.lower_e,
+		b'f' => ascii_sheet.lower_f,
+		b'g' => ascii_sheet.lower_g,
+		b'h' => ascii_sheet.lower_h,
+		b'i' => ascii_sheet.lower_i,
+		b'j' => ascii_sheet.lower_j,
+		b'k' => ascii_sheet.lower_k,
+		b'l' => ascii_sheet.lower_l,
+		b'm' => ascii_sheet.lower_m,
+		b'n' => ascii_sheet.lower_n,
+		b'o' => ascii_sheet.lower_o,
+		b'p' => ascii_sheet.lower_p,
+		b'q' => ascii_sheet.lower_q,
+		b'r' => ascii_sheet.lower_r,
+		b's' => ascii_sheet.lower_s,
+		b't' => ascii_sheet.lower_t,
+		b'u' => ascii_sheet.lower_u,
+		b'v' => ascii_sheet.lower_v,
+		b'w' => ascii_sheet.lower_w,
+		b'x' => ascii_sheet.lower_x,
+		b'y' => ascii_sheet.lower_y,
+		b'z' => ascii_sheet.lower_z,
+
+		b'0' => ascii_sheet.digit_0,
+		b'1' => ascii_sheet.digit_1,
+		b'2' => ascii_sheet.digit_2,
+		b'3' => ascii_sheet.digit_3,
+		b'4' => ascii_sheet.digit_4,
+		b'5' => ascii_sheet.digit_5,
+		b'6' => ascii_sheet.digit_6,
+		b'7' => ascii_sheet.digit_7,
+		b'8' => ascii_sheet.digit_8,
+		b'9' => ascii_sheet.digit_9,
+
+		b'!' => ascii_sheet.exclamation_mark,
+		b'?' => ascii_sheet.question_mark,
+		b':' => ascii_sheet.colon,
+		b';' => ascii_sheet.semicolon,
+		b',' => ascii_sheet.comma,
+		b'.' => ascii_sheet.period,
+		b'*' => ascii_sheet.star,
+		b'#' => ascii_sheet.hashtag,
+		b'\'' => ascii_sheet.single_quote,
+		b'"' => ascii_sheet.double_quote,
+		b'[' => ascii_sheet.bracket_l,
+		b']' => ascii_sheet.bracket_r,
+		b'(' => ascii_sheet.parens_l,
+		b')' => ascii_sheet.parens_r,
+		b'{' => ascii_sheet.brace_l,
+		b'}' => ascii_sheet.brace_r,
+		b'<' => ascii_sheet.less_than,
+		b'>' => ascii_sheet.greater_than,
+		b'-' => ascii_sheet.minus,
+		b'+' => ascii_sheet.plus,
+		b'/' => ascii_sheet.slash,
+		b'=' => ascii_sheet.equals,
+		b'_' => ascii_sheet.underscore,
+
+		_ => ascii_sheet.question_mark,
 	}
 }

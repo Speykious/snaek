@@ -1,5 +1,5 @@
-use super::pixel::alphacomp::AlphaCompFn;
-use super::pixel::Pixel;
+use super::color::alphacomp::AlphaCompFn;
+use super::color::Color;
 use super::{Pos, Rect, Size};
 use crate::math::pos::pos;
 
@@ -72,7 +72,7 @@ impl Bitmap {
 
 	pub fn copy_bitmap(&mut self, other: &Bitmap, acf: AlphaCompFn) {
 		for (px, other_px) in self.buffer.iter_mut().zip(other.buffer.iter()) {
-			*px = (acf)(Pixel::from_hex(*other_px), Pixel::from_hex(*px)).to_u32();
+			*px = (acf)(Color::from_hex(*other_px), Color::from_hex(*px)).to_u32();
 		}
 	}
 
@@ -88,27 +88,27 @@ impl Bitmap {
 			return;
 		}
 
-		for y in 0..size.h as i16 {
+		for y in 0..(size.h as i32).min(self.size.h as i32 - this_pos.y as i32) as i16 {
 			let this_line = self.line_mut(pos(this_pos.x, this_pos.y + y), size.w);
 			let other_line = other.line(pos(other_pos.x, other_pos.y + y), size.w);
 			for (this_px, other_px) in this_line.iter_mut().zip(other_line.iter()) {
-				*this_px = (acf)(Pixel::from_hex(*other_px), Pixel::from_hex(*this_px)).to_u32();
+				*this_px = (acf)(Color::from_hex(*other_px), Color::from_hex(*this_px)).to_u32();
 			}
 		}
 	}
 
-	pub fn fill(&mut self, pixel: Pixel, acf: AlphaCompFn) {
+	pub fn fill(&mut self, pixel: Color, acf: AlphaCompFn) {
 		for px in &mut self.buffer {
-			*px = (acf)(pixel, Pixel::from_hex(*px)).to_u32();
+			*px = (acf)(pixel, Color::from_hex(*px)).to_u32();
 		}
 	}
 
-	pub fn fill_area(&mut self, pixel: Pixel, rect: Rect, acf: AlphaCompFn) {
+	pub fn fill_area(&mut self, pixel: Color, rect: Rect, acf: AlphaCompFn) {
 		let rect = self.crop_rect(rect);
 
 		for y in 0..rect.h as i16 {
 			for px in self.line_mut(pos(rect.x, rect.y + y), rect.w) {
-				*px = (acf)(pixel, Pixel::from_hex(*px)).to_u32();
+				*px = (acf)(pixel, Color::from_hex(*px)).to_u32();
 			}
 		}
 	}

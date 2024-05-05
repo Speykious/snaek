@@ -1,15 +1,15 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(C, align(4))]
-pub struct Pixel {
+pub struct Color {
 	pub a: u8,
 	pub r: u8,
 	pub g: u8,
 	pub b: u8,
 }
 
-impl Pixel {
+impl Color {
 	pub const ZERO: Self = Self::from_hex(0x00000000);
 
 	#[inline]
@@ -41,8 +41,8 @@ impl Pixel {
 	}
 }
 
-impl Add for Pixel {
-	type Output = Pixel;
+impl Add for Color {
+	type Output = Color;
 
 	fn add(mut self, rhs: Self) -> Self::Output {
 		self.a += rhs.a;
@@ -53,14 +53,14 @@ impl Add for Pixel {
 	}
 }
 
-impl AddAssign for Pixel {
+impl AddAssign for Color {
 	fn add_assign(&mut self, rhs: Self) {
 		*self = *self + rhs;
 	}
 }
 
-impl Sub for Pixel {
-	type Output = Pixel;
+impl Sub for Color {
+	type Output = Color;
 
 	fn sub(mut self, rhs: Self) -> Self::Output {
 		self.a -= rhs.a;
@@ -71,14 +71,14 @@ impl Sub for Pixel {
 	}
 }
 
-impl SubAssign for Pixel {
+impl SubAssign for Color {
 	fn sub_assign(&mut self, rhs: Self) {
 		*self = *self - rhs;
 	}
 }
 
-impl Mul<u8> for Pixel {
-	type Output = Pixel;
+impl Mul<u8> for Color {
+	type Output = Color;
 
 	fn mul(mut self, rhs: u8) -> Self::Output {
 		self.a *= rhs;
@@ -89,8 +89,8 @@ impl Mul<u8> for Pixel {
 	}
 }
 
-impl Mul<f32> for Pixel {
-	type Output = Pixel;
+impl Mul<f32> for Color {
+	type Output = Color;
 
 	fn mul(mut self, rhs: f32) -> Self::Output {
 		self.a = (self.a as f32 * rhs) as u8;
@@ -101,14 +101,14 @@ impl Mul<f32> for Pixel {
 	}
 }
 
-impl MulAssign<u8> for Pixel {
+impl MulAssign<u8> for Color {
 	fn mul_assign(&mut self, rhs: u8) {
 		*self = *self * rhs;
 	}
 }
 
-impl Div<u8> for Pixel {
-	type Output = Pixel;
+impl Div<u8> for Color {
+	type Output = Color;
 
 	fn div(mut self, rhs: u8) -> Self::Output {
 		self.a /= rhs;
@@ -119,7 +119,7 @@ impl Div<u8> for Pixel {
 	}
 }
 
-impl DivAssign<u8> for Pixel {
+impl DivAssign<u8> for Color {
 	fn div_assign(&mut self, rhs: u8) {
 		*self = *self / rhs;
 	}
@@ -130,21 +130,21 @@ pub mod alphacomp {
 	//!
 	//! ![Alpha compositing](https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Alpha_compositing.svg/642px-Alpha_compositing.svg.png)
 
-	use super::Pixel;
+	use super::Color;
 
 	/// An alpha composition function.
-	pub type AlphaCompFn = fn(Pixel, Pixel) -> Pixel;
+	pub type AlphaCompFn = fn(Color, Color) -> Color;
 
 	/// Computes `A over B`.
 	#[inline]
-	pub fn over(pixa: Pixel, pixb: Pixel) -> Pixel {
+	pub fn over(pixa: Color, pixb: Color) -> Color {
 		pixa * (pixa.a as f32 / 255.) + pixb * (1. - pixa.a as f32 / 255.)
 	}
 
 	/// Computes `A + B`.
 	#[inline]
-	pub fn add(pixa: Pixel, pixb: Pixel) -> Pixel {
-		Pixel {
+	pub fn add(pixa: Color, pixb: Color) -> Color {
+		Color {
 			a: pixa.a.saturating_add(pixb.a),
 			r: pixa.r.saturating_add(pixb.r),
 			g: pixa.g.saturating_add(pixb.g),
@@ -154,13 +154,13 @@ pub mod alphacomp {
 
 	/// Computes A.
 	#[inline]
-	pub fn dst(pixa: Pixel, _pixb: Pixel) -> Pixel {
+	pub fn dst(pixa: Color, _pixb: Color) -> Color {
 		pixa
 	}
 
 	/// Computes B.
 	#[inline]
-	pub fn src(_pixa: Pixel, pixb: Pixel) -> Pixel {
+	pub fn src(_pixa: Color, pixb: Color) -> Color {
 		pixb
 	}
 }

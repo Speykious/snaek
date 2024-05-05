@@ -3,16 +3,31 @@ use crate::math::rect::Rect;
 use crate::math::size::size;
 use crate::math::LayoutRect;
 
-use super::{Anchor, FlexDirection, UiContext, WidgetDim, WidgetId, WidgetLayout};
+use super::{Anchor, FlexDirection, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetLayout};
 
 impl UiContext {
-	fn children_fills_count(&self, wid: WidgetId) -> usize {
+	fn children_width_fills_count(&self, wid: WidgetId) -> usize {
 		let mut count = 0;
 
 		let mut child_id = self.widget(wid).first_child;
 		while let Some(child) = child_id {
 			let child = self.widget(child);
-			if matches!(child.layout, WidgetLayout::Flex { .. }) {
+			if child.props.size.w == WidgetDim::Fill {
+				count += 1;
+			}
+			child_id = child.next;
+		}
+
+		count
+	}
+
+	fn children_height_fills_count(&self, wid: WidgetId) -> usize {
+		let mut count = 0;
+
+		let mut child_id = self.widget(wid).first_child;
+		while let Some(child) = child_id {
+			let child = self.widget(child);
+			if child.props.size.h == WidgetDim::Fill {
 				count += 1;
 			}
 			child_id = child.next;
@@ -32,9 +47,9 @@ impl UiContext {
 			child_id = self.widget(child).next;
 		}
 
-		let solved_min_width = match widget.size.w {
+		let mut solved_min_width = match widget.props.size.w {
 			WidgetDim::Fixed(width) => width,
-			WidgetDim::Hug => match (widget.first_child, widget.layout) {
+			WidgetDim::Hug => match (widget.first_child, widget.props.layout) {
 				(Some(child), WidgetLayout::Stacked) => {
 					let mut child = self.widget(child);
 					let mut min_w = child.solved_min_size.w;
@@ -75,9 +90,9 @@ impl UiContext {
 			WidgetDim::Fill => 0,
 		};
 
-		let solved_min_height = match widget.size.h {
+		let mut solved_min_height = match widget.props.size.h {
 			WidgetDim::Fixed(height) => height,
-			WidgetDim::Hug => match (widget.first_child, widget.layout) {
+			WidgetDim::Hug => match (widget.first_child, widget.props.layout) {
 				(Some(child), WidgetLayout::Stacked) => {
 					let mut child = self.widget(child);
 					let mut min_h = child.solved_min_size.h;
@@ -118,8 +133,19 @@ impl UiContext {
 			WidgetDim::Fill => 0,
 		};
 
-		widget.solved_min_size.w = solved_min_width.saturating_add_signed(widget.padding.l + widget.padding.r);
-		widget.solved_min_size.h = solved_min_height.saturating_add_signed(widget.padding.t + widget.padding.b);
+		// take text into account
+		if widget.props.flags.has(WidgetFlags::DRAW_TEXT) {
+			if let Some(text) = &widget.props.text {
+				let text_size = text.size();
+				solved_min_width = solved_min_width.max(text_size.w);
+				solved_min_height = solved_min_height.max(text_size.h);
+			}
+		}
+
+		widget.solved_min_size.w =
+			solved_min_width.saturating_add_signed(widget.props.padding.l + widget.props.padding.r);
+		widget.solved_min_size.h =
+			solved_min_height.saturating_add_signed(widget.props.padding.t + widget.props.padding.b);
 	}
 
 	/// Solve a widget's rect, based on the parent's solved rect.
@@ -127,13 +153,13 @@ impl UiContext {
 		let (current_solved_rect, layout, padding) = {
 			let mut widget = self.widget_mut(wid);
 
-			let solved_width = match widget.size.w {
+			let solved_width = match widget.props.size.w {
 				WidgetDim::Fixed(width) => width,
 				WidgetDim::Hug => widget.solved_min_size.w,
 				WidgetDim::Fill => parent_solved_rect.w,
 			};
 
-			let solved_height = match widget.size.h {
+			let solved_height = match widget.props.size.h {
 				WidgetDim::Fixed(height) => height,
 				WidgetDim::Hug => widget.solved_min_size.h,
 				WidgetDim::Fill => parent_solved_rect.h,
@@ -142,12 +168,12 @@ impl UiContext {
 			let solved_size = size(solved_width, solved_height);
 
 			let parent_layout_rect = LayoutRect::new(parent_solved_rect, Anchor::TOP_LEFT);
-			let current_pos = parent_layout_rect.anchor(widget.anchor);
+			let current_pos = parent_layout_rect.anchor_ceil(widget.props.anchor);
 			let current_rect = Rect::from_pos_size(current_pos, solved_size);
 
-			widget.solved_rect = LayoutRect::new(current_rect, widget.origin).to_rect();
+			widget.solved_rect = LayoutRect::new(current_rect, widget.props.origin).to_rect();
 
-			(widget.solved_rect, widget.layout, widget.padding)
+			(widget.solved_rect, widget.props.layout, widget.props.padding)
 		};
 
 		let inner_solved_rect = Rect {
@@ -167,7 +193,7 @@ impl UiContext {
 			}
 			WidgetLayout::Flex { direction, gap } => match direction {
 				FlexDirection::Horizontal => {
-					let fills_count = self.children_fills_count(wid);
+					let fills_count = self.children_width_fills_count(wid);
 
 					let filling_width = if fills_count == 0 {
 						0
@@ -178,7 +204,7 @@ impl UiContext {
 						let mut child_id = widget.first_child;
 						while let Some(child) = child_id {
 							let child = self.widget(child);
-							match child.size.w {
+							match child.props.size.w {
 								WidgetDim::Fill => (),
 								_ => fixed_width += child.solved_rect.w as isize,
 							}
@@ -198,7 +224,7 @@ impl UiContext {
 					while let Some(child) = child_id {
 						let (child_w, solved_w, child_next) = {
 							let child = self.widget(child);
-							(child.size.w, child.solved_rect.w, child.next)
+							(child.props.size.w, child.solved_rect.w, child.next)
 						};
 
 						let child_width = match child_w {
@@ -219,7 +245,7 @@ impl UiContext {
 					}
 				}
 				FlexDirection::Vertical => {
-					let fills_count = self.children_fills_count(wid);
+					let fills_count = self.children_height_fills_count(wid);
 
 					let filling_height = if fills_count == 0 {
 						0
@@ -230,7 +256,7 @@ impl UiContext {
 						let mut child_id = widget.first_child;
 						while let Some(child) = child_id {
 							let child = self.widget(child);
-							match child.size.h {
+							match child.props.size.h {
 								WidgetDim::Fill => (),
 								_ => fixed_height += child.solved_rect.h as isize,
 							}
@@ -250,7 +276,7 @@ impl UiContext {
 					while let Some(child) = child_id {
 						let (child_h, solved_h, child_next) = {
 							let child = self.widget(child);
-							(child.size.h, child.solved_rect.h, child.next)
+							(child.props.size.h, child.solved_rect.h, child.next)
 						};
 
 						let child_height = match child_h {

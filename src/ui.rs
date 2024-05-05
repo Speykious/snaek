@@ -4,18 +4,18 @@ use std::default;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::num::NonZeroUsize;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, DerefMut};
+use std::sync::Arc;
 
 use crate::math::pos::Pos;
 use crate::math::rect::Rect;
 use crate::math::size::Size;
-use crate::render::DrawCommand;
+use crate::render::color::{alphacomp, Color};
+use crate::render::sprite::NineSlicingSprite;
+use crate::render::{DrawCommand, Text, SpritesheetId};
 use crate::wk;
 
-pub mod ascii_sheet;
 pub mod components;
 pub mod layout;
-
-pub use ascii_sheet::{ascii_sheet, AsciiSheet};
 
 /// ID of a widget.
 ///
@@ -26,7 +26,7 @@ pub struct WidgetId(NonZeroUsize);
 /// A key that uniquely identifies a widget.
 ///
 /// It contains
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(C)]
 pub struct WidgetKey(u64);
 
@@ -63,10 +63,10 @@ impl<H: Hasher> WidgetKeyHasher<H> {
 
 #[macro_export]
 macro_rules! wk {
-	( $( [ $($key:expr),* ] )? $($n:expr),* ) => {
+	( $( [ $($key:ident),* ] )? $($n:ident),* ) => {
 		$crate::ui::WidgetKeyHasher::new(::std::hash::DefaultHasher::default())
 			.hash_loc(module_path!(), line!(), column!())
-			$(.hash_key($key))*
+			$($(.hash_key($key))*)?
 			$(.hash_n($n))*
 			.finish()
 	};
@@ -75,7 +75,6 @@ macro_rules! wk {
 #[derive(Debug, Clone)]
 pub struct Widget {
 	id: WidgetId,
-	key: WidgetKey,
 
 	// tree links
 	// It's side-stepping-the-borrow-checker time!
@@ -87,17 +86,8 @@ pub struct Widget {
 	last_child: Option<WidgetId>,
 	children_count: usize,
 
-	// feature combinations
-	flags: WidgetFlags,
-
-	// declarative layout data
-	anchor: Anchor,
-	origin: Anchor,
-	offset: Pos,
-	size: WidgetSize,
-	padding: WidgetPadding,
-
-	layout: WidgetLayout,
+	// any userland properties
+	props: WidgetProps,
 
 	// persistent state
 	/// If a widget hasn't been touched in the current frame,
@@ -155,6 +145,26 @@ pub struct WidgetPadding {
 	pub l: i16,
 }
 
+impl WidgetPadding {
+	/// top, right, bottom, left
+	#[inline]
+	pub const fn trbl(t: i16, r: i16, b: i16, l: i16) -> Self {
+		Self { t, r, b, l }
+	}
+
+	/// all the same value
+	#[inline]
+	pub const fn all(x: i16) -> Self {
+		Self { t: x, r: x, b: x, l: x }
+	}
+
+	/// horizontal, vertical
+	#[inline]
+	pub const fn hv(h: i16, v: i16) -> Self {
+		Self { t: v, r: h, b: v, l: h }
+	}
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct WidgetFlags(u32);
 
@@ -166,6 +176,13 @@ impl WidgetFlags {
 	pub const DRAW_TEXT:       Self = Self(1 << 2);
 	pub const DRAW_BORDER:     Self = Self(1 << 3);
 	pub const DRAW_BACKGROUND: Self = Self(1 << 4);
+	pub const DRAW_NINE_SLICE: Self = Self(1 << 5);
+}
+
+impl WidgetFlags {
+	pub fn has(&self, flags: WidgetFlags) -> bool {
+		self.0 & flags.0 == flags.0
+	}
 }
 
 impl BitAnd for WidgetFlags {
@@ -213,10 +230,20 @@ pub enum WidgetLayout {
 	},
 }
 
-#[derive(Debug, Clone)]
-pub struct WidgetBuilder {
+/// Userland widget properties
+#[derive(Debug, Clone, Default)]
+pub struct WidgetProps {
 	pub key: WidgetKey,
+
+	// feature combinations
 	pub flags: WidgetFlags,
+	pub fg_color: Color,
+	pub bg_color: Color,
+	pub text: Option<Text>,
+	pub stroke_width: u16,
+	pub nss: Option<(SpritesheetId, NineSlicingSprite)>,
+
+	// declarative layout data
 	pub anchor: Anchor,
 	pub origin: Anchor,
 	pub offset: Pos,
@@ -225,65 +252,12 @@ pub struct WidgetBuilder {
 	pub layout: WidgetLayout,
 }
 
-impl WidgetBuilder {
-	#[inline]
-	pub(super) fn reset(&self, w: &mut Widget) {
-		w.parent = None;
-		w.prev = None;
-		w.next = None;
-		w.first_child = None;
-		w.last_child = None;
-
-		w.flags = self.flags;
-
-		w.anchor = self.anchor;
-		w.origin = self.origin;
-		w.offset = self.offset;
-		w.size = self.size;
-
-		w.layout = self.layout;
-	}
-
-	#[inline]
-	pub(super) const fn build(self, id: WidgetId, current_frame: u64) -> Widget {
-		Widget {
-			id,
-			key: self.key,
-
-			parent: None,
-			prev: None,
-			next: None,
-			first_child: None,
-			last_child: None,
-			children_count: 0,
-
-			flags: self.flags,
-
-			anchor: self.anchor,
-			origin: self.origin,
-			offset: self.offset,
-			size: self.size,
-			padding: self.padding,
-
-			layout: self.layout,
-
-			last_frame_touched: current_frame,
-			freed: false,
-
-			solved_rect: Rect::ZERO,
-			solved_min_size: Size::ZERO,
-		}
-	}
-}
-
 #[derive(Default)]
 pub struct UiContext {
 	// I was too lazy to use an actual arena.
 	widgets: Vec<RefCell<Widget>>,
 	first_freed: Option<WidgetId>,
 	keys: HashMap<WidgetKey, WidgetId>,
-
-	draw_commands: Vec<DrawCommand>,
 
 	viewport_size: Size,
 	mouse_pos: Pos,
@@ -308,8 +282,8 @@ impl UiContext {
 		}
 	}
 
-	pub fn build_widget(&mut self, builder: WidgetBuilder) -> WidgetId {
-		match self.keys.get(&builder.key) {
+	pub fn build_widget(&mut self, props: WidgetProps) -> WidgetId {
+		match self.keys.get(&props.key) {
 			Some(&id) => {
 				let mut widget = self.widget_mut(id);
 
@@ -327,14 +301,39 @@ impl UiContext {
 					}
 				}
 
-				builder.reset(widget.deref_mut());
-				widget.last_frame_touched = self.current_frame;
+				let widget = widget.deref_mut();
+				widget.parent = None;
+				widget.prev = None;
+				widget.next = None;
+				widget.first_child = None;
+				widget.last_child = None;
+				widget.children_count = 0;
+				widget.props = props;
+
 				id
 			}
 			None => {
 				let id = Self::id_from_index(self.widgets.len());
-				self.keys.insert(builder.key, id);
-				self.widgets.push(RefCell::new(builder.build(id, self.current_frame)));
+				self.keys.insert(props.key, id);
+				self.widgets.push(RefCell::new(Widget {
+					id,
+
+					parent: None,
+					prev: None,
+					next: None,
+					first_child: None,
+					last_child: None,
+					children_count: 0,
+
+					props,
+
+					last_frame_touched: self.current_frame,
+					freed: false,
+
+					solved_rect: Rect::ZERO,
+					solved_min_size: Size::ZERO,
+				}));
+
 				id
 			}
 		}
@@ -357,9 +356,9 @@ impl UiContext {
 	}
 
 	fn free_untouched_widgets_rec(&mut self, wid: WidgetId) {
-		let (last_frame_touched, child, next) = {
+		let (last_frame_touched, child) = {
 			let mut w = self.widget_mut(wid);
-			(w.last_frame_touched, w.first_child, w.next)
+			(w.last_frame_touched, w.first_child)
 		};
 
 		if last_frame_touched != self.current_frame {
@@ -375,12 +374,10 @@ impl UiContext {
 			self.first_freed = Some(wid);
 		}
 
-		if let Some(child) = child {
-			self.free_untouched_widgets_rec(child);
-		}
-
-		if let Some(next) = next {
-			self.free_untouched_widgets_rec(next);
+		let mut child = child;
+		while let Some(ch) = child {
+			self.free_untouched_widgets_rec(ch);
+			child = self.widget(ch).next;
 		}
 	}
 
@@ -388,20 +385,71 @@ impl UiContext {
 		self.free_untouched_widgets_rec(Self::ROOT_WIDGET);
 	}
 
-	pub fn push_draw(&mut self, cmd: DrawCommand) {
-		self.draw_commands.push(cmd);
+	fn draw_widgets_rec(&mut self, draw_cmds: &mut Vec<DrawCommand>, wid: WidgetId) {
+		{
+			let mut wid = Some(wid);
+			while let Some(w) = wid {
+				let widget = self.widget(w);
+				let props = &widget.props;
+
+				if props.flags.has(WidgetFlags::DRAW_NINE_SLICE) {
+					if let Some((sheet_id, nss)) = props.nss {
+						draw_cmds.push(DrawCommand::NineSlicingSprite {
+							rect: widget.solved_rect,
+							sheet_id,
+							nss,
+							acf: alphacomp::over,
+						});
+					}
+				}
+
+				if props.flags.has(WidgetFlags::DRAW_BACKGROUND) {
+					draw_cmds.push(DrawCommand::Fill {
+						rect: widget.solved_rect,
+						color: props.bg_color,
+						acf: alphacomp::over,
+					});
+				}
+
+				if props.flags.has(WidgetFlags::DRAW_BORDER) {
+					draw_cmds.push(DrawCommand::Stroke {
+						rect: widget.solved_rect,
+						color: props.bg_color,
+						stroke_width: 1,
+						acf: alphacomp::over,
+					});
+				}
+
+				if props.flags.has(WidgetFlags::DRAW_TEXT) {
+					if let Some(text) = &widget.props.text {
+						draw_cmds.push(DrawCommand::Text {
+							text: text.text().clone(),
+							pos: widget.solved_rect.pos(),
+							acf: alphacomp::over,
+						});
+					}
+				}
+
+				wid = self.widget(w).next;
+			}
+		}
+
+		{
+			let mut wid = Some(wid);
+			while let Some(w) = wid {
+				let first_child = self.widget(w).first_child;
+				if let Some(first_child) = first_child {
+					self.draw_widgets_rec(draw_cmds, first_child);
+				}
+				wid = self.widget(w).next;
+			}
+		}
 	}
 
-	pub fn clear_draws(&mut self) {
-		self.draw_commands.clear();
-	}
-
-	pub fn flush_draws(&mut self, out_cmds: &mut Vec<DrawCommand>) {
-		out_cmds.append(&mut self.draw_commands);
-	}
-
-	pub fn draw_commands(&self) -> &[DrawCommand] {
-		&self.draw_commands
+	pub fn draw_widgets(&mut self, draw_cmds: &mut Vec<DrawCommand>) {
+		draw_cmds.push(DrawCommand::BeginComposite);
+		self.draw_widgets_rec(draw_cmds, Self::ROOT_WIDGET);
+		draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
 	}
 
 	pub fn widget(&self, wid: WidgetId) -> Ref<'_, Widget> {

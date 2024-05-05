@@ -8,12 +8,12 @@ use self::math::pos::{pos, Pos};
 use self::math::rect::Rect;
 use self::math::size::size;
 use self::render::bitmap::Bitmap;
-use self::render::pixel::{alphacomp, Pixel};
+use self::render::color::{alphacomp, Color};
 use image::{ImageFormat, ImageResult};
 use math::size::Size;
 use minifb::{Key, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
-use render::{DrawCommand, Renderer};
+use render::{DrawCommand, Renderer, SpritesheetId};
 use snake::SnaekSheet;
 use ui::{Anchor, FlexDirection, UiContext, WidgetDim, WidgetLayout, WidgetSize};
 
@@ -39,7 +39,7 @@ fn main() {
 
 #[derive(Debug, Clone)]
 struct Bounce {
-	pub pixel: Pixel,
+	pub pixel: Color,
 	pub rect: Rect,
 	pub dpos: Pos,
 }
@@ -66,14 +66,14 @@ fn load_png_from_memory(png: &[u8]) -> ImageResult<Bitmap> {
 const VIEWPORT_SIZE: Size = size(WIDTH, HEIGHT);
 
 fn game() -> Result<(), Box<dyn Error>> {
-	let mut renderer = Renderer::new(Bitmap::new(VIEWPORT_SIZE));
+	let ascii_bitmap = load_png_from_memory(IMG_ASCII_CHARS)?;
+	let ascii_sheet = render::ascii_sheet();
+
+	let mut renderer = Renderer::new(Bitmap::new(VIEWPORT_SIZE), ascii_bitmap);
 	let mut ui = UiContext::new(VIEWPORT_SIZE);
 
-	let ascii_chars_id = renderer.register_spritesheet(load_png_from_memory(IMG_ASCII_CHARS)?);
 	let snaek_sheet_id = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
-
-	let ascii_sheet = ui::ascii_sheet(ascii_chars_id);
-	let snaek_sheet = snake::snaek_sheet(snaek_sheet_id);
+	let snaek_sheet = snake::snaek_sheet();
 
 	let options = WindowOptions {
 		borderless: true,
@@ -92,17 +92,17 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 	let mut bounces = [
 		Bounce {
-			pixel: Pixel::from_hex(0xff801234),
+			pixel: Color::from_hex(0xff801234),
 			rect: Rect::from_pos_size(center + pos(-8, -10), bounce_size),
 			dpos: pos(-1, -1),
 		},
 		Bounce {
-			pixel: Pixel::from_hex(0x80128034),
+			pixel: Color::from_hex(0x80128034),
 			rect: Rect::from_pos_size(center + pos(9, -13), bounce_size),
 			dpos: pos(1, -1),
 		},
 		Bounce {
-			pixel: Pixel::from_hex(0xff123480),
+			pixel: Color::from_hex(0xff123480),
 			rect: Rect::from_pos_size(center + pos(11, 12), bounce_size),
 			dpos: pos(1, 1),
 		},
@@ -140,36 +140,38 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 		draw_cmds.clear();
 
-		ui.clear_draws();
-		ui.push_draw(DrawCommand::Clear);
-		ui.push_draw(DrawCommand::Fill {
+		draw_cmds.push(DrawCommand::Clear);
+		draw_cmds.push(DrawCommand::Fill {
 			rect: renderer.rect(),
-			color: Pixel::from_hex(0xff262b44),
+			color: Color::from_hex(0xff262b44),
 			acf: alphacomp::dst,
 		});
 
-		ui.push_draw(DrawCommand::Stroke {
+		draw_cmds.push(DrawCommand::Stroke {
 			rect: renderer.rect(),
 			stroke_width: 1,
-			color: Pixel::from_hex(0xff181425),
+			color: Color::from_hex(0xff181425),
 			acf: alphacomp::dst,
 		});
 
-		ui.flush_draws(&mut draw_cmds);
-		draw_rectangles_bouncing(&renderer, &bounces, &snaek_sheet, mouse_pos, &mut draw_cmds);
+		draw_rectangles_bouncing(
+			&renderer,
+			&bounces,
+			snaek_sheet_id,
+			&snaek_sheet,
+			mouse_pos,
+			&mut draw_cmds,
+		);
 
-		ui.push_draw(DrawCommand::BeginComposite);
+		// UI
 		{
-			ui.push_draw(DrawCommand::Clear);
-
-			// drawing
 			let frame_id = ui.frame(
 				wk!(),
 				Anchor::CENTER,
 				Anchor::CENTER,
 				WidgetSize {
-					w: WidgetDim::Hug,
-					h: WidgetDim::Hug,
+					w: WidgetDim::Fixed(30),
+					h: WidgetDim::Fixed(HEIGHT - 4),
 				},
 				WidgetLayout::Flex {
 					direction: FlexDirection::Vertical,
@@ -177,20 +179,49 @@ fn game() -> Result<(), Box<dyn Error>> {
 				},
 			);
 
+			let ewe_button_id = ui.button(
+				wk!(),
+				renderer.text("ewe"),
+				WidgetSize {
+					w: WidgetDim::Fill,
+					h: WidgetDim::Fill,
+				},
+				(snaek_sheet_id, snaek_sheet.box_embossed),
+				(snaek_sheet_id, snaek_sheet.box_carved),
+			);
+			ui.add_child(frame_id, ewe_button_id);
+
 			for i in 0..3 {
-				let uwu_button_id = ui.button(wk!(i), "UwU", snaek_sheet.box_embossed, snaek_sheet.box_carved);
+				let uwu_button_id = ui.button(
+					wk!(i),
+					renderer.text("UwU"),
+					WidgetSize {
+						w: WidgetDim::Fill,
+						h: WidgetDim::Fixed(9),
+					},
+					(snaek_sheet_id, snaek_sheet.box_embossed),
+					(snaek_sheet_id, snaek_sheet.box_carved),
+				);
 				ui.add_child(frame_id, uwu_button_id);
-				
-				let owo_button_id = ui.button(wk!(i), "OwO", snaek_sheet.box_embossed, snaek_sheet.box_carved);
+
+				let owo_button_id = ui.button(
+					wk!(i),
+					renderer.text("OwO"),
+					WidgetSize {
+						w: WidgetDim::Fill,
+						h: WidgetDim::Fixed(9),
+					},
+					(snaek_sheet_id, snaek_sheet.box_embossed),
+					(snaek_sheet_id, snaek_sheet.box_carved),
+				);
 				ui.add_child(frame_id, owo_button_id);
 			}
 		}
-		ui.push_draw(DrawCommand::EndComposite(alphacomp::over));
-		ui.flush_draws(&mut draw_cmds);
-
-		renderer.draw(&draw_cmds, &ascii_sheet);
 		ui.solve_layout();
+		ui.draw_widgets(&mut draw_cmds);
 		ui.free_untouched_widgets();
+
+		renderer.draw(&draw_cmds);
 
 		window
 			.update_with_buffer(renderer.first_framebuffer().pixels(), WIDTH as usize, HEIGHT as usize)
@@ -203,6 +234,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 fn draw_rectangles_bouncing(
 	renderer: &Renderer,
 	bounces: &[Bounce],
+	snaek_sheet_id: SpritesheetId,
 	snaek_sheet: &SnaekSheet,
 	mouse_pos: Pos,
 	draw_cmds: &mut Vec<DrawCommand>,
@@ -211,7 +243,7 @@ fn draw_rectangles_bouncing(
 	{
 		draw_cmds.push(DrawCommand::Fill {
 			rect: renderer.rect(),
-			color: Pixel::from_hex(0x10000000),
+			color: Color::from_hex(0x10000000),
 			acf: alphacomp::over,
 		});
 
@@ -228,13 +260,14 @@ fn draw_rectangles_bouncing(
 			draw_cmds.push(DrawCommand::Clear);
 			draw_cmds.push(DrawCommand::Sprite {
 				pos: Pos::ZERO,
+				sheet_id: snaek_sheet_id,
 				sprite: snaek_sheet.snaek_icon,
 				acf: alphacomp::over,
 			});
 
 			draw_cmds.push(DrawCommand::Text {
 				pos: pos(12, 12),
-				text: "Hello, world!".to_string(),
+				text: "Hello, world!".into(),
 				acf: alphacomp::over,
 			});
 		}

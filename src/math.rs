@@ -41,6 +41,14 @@ impl LayoutRect {
 		}
 	}
 
+	pub fn anchor_ceil(&self, anchor: Anchor) -> Pos {
+		let pos = self.top_left();
+		Pos {
+			x: pos.x + (self.rect.w as f32 * anchor.x).ceil() as i16,
+			y: pos.y + (self.rect.h as f32 * anchor.y).ceil() as i16,
+		}
+	}
+
 	pub fn to_rect(&self) -> Rect {
 		let tl = self.top_left();
 
