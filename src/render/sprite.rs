@@ -2,8 +2,6 @@ use std::ops::{Deref, DerefMut};
 
 use crate::math::rect::Rect;
 
-use super::SpritesheetId;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Sprite {
 	/// Describes where the sprite is located in the spritesheet.

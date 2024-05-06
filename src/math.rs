@@ -25,14 +25,6 @@ impl LayoutRect {
 		}
 	}
 
-	pub fn center_of_rect(&self) -> Pos {
-		let pos = self.top_left();
-		Pos {
-			x: pos.x + (self.rect.w / 2) as i16,
-			y: pos.y + (self.rect.h / 2) as i16,
-		}
-	}
-
 	pub fn anchor(&self, anchor: Anchor) -> Pos {
 		let pos = self.top_left();
 		Pos {

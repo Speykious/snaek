@@ -1,10 +1,8 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
-use std::default;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::num::NonZeroUsize;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, DerefMut};
-use std::sync::Arc;
 
 use crate::math::pos::Pos;
 use crate::math::rect::Rect;
@@ -12,7 +10,6 @@ use crate::math::size::Size;
 use crate::render::color::{alphacomp, Color};
 use crate::render::sprite::NineSlicingSprite;
 use crate::render::{DrawCommand, SpritesheetId, Text};
-use crate::wk;
 
 pub mod components;
 pub mod layout;
@@ -295,7 +292,6 @@ pub struct UiContext {
 	keys: HashMap<WidgetKey, WidgetId>,
 
 	viewport_size: Size,
-	mouse_pos: Pos,
 	current_frame: u64,
 }
 
@@ -408,7 +404,7 @@ impl UiContext {
 
 	fn free_untouched_widgets_rec(&mut self, wid: WidgetId) {
 		let (last_frame_touched, child) = {
-			let mut w = self.widget_mut(wid);
+			let w = self.widget(wid);
 			(w.last_frame_touched, w.first_child)
 		};
 
@@ -512,7 +508,6 @@ impl UiContext {
 		let first_child = {
 			let mut widget = self.widget_mut(wid);
 
-			let hovered_prev = widget.hovered;
 			let pressed_prev = widget.pressed;
 
 			widget.hovered = widget.solved_rect.contains(mouse.x, mouse.y);

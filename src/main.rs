@@ -4,8 +4,6 @@
 use std::error::Error;
 use std::time::Duration;
 
-use crate::ui::WidgetFlags;
-
 use self::math::pos::{pos, Pos};
 use self::math::rect::Rect;
 use self::math::size::size;
@@ -69,7 +67,6 @@ const VIEWPORT_SIZE: Size = size(WIDTH, HEIGHT);
 
 fn game() -> Result<(), Box<dyn Error>> {
 	let ascii_bitmap = load_png_from_memory(IMG_ASCII_CHARS)?;
-	let ascii_sheet = render::ascii_sheet();
 
 	let mut renderer = Renderer::new(Bitmap::new(VIEWPORT_SIZE), ascii_bitmap);
 	let mut ui = UiContext::new(VIEWPORT_SIZE);

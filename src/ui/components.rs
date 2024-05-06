@@ -1,12 +1,10 @@
-use crate::math::pos::{pos, Pos};
-use crate::render::color::{alphacomp, Color};
+use crate::math::pos::pos;
 use crate::render::sprite::NineSlicingSprite;
-use crate::render::{DrawCommand, SpritesheetId, Text};
+use crate::render::{SpritesheetId, Text};
 use crate::wk;
 
 use super::{
-	Anchor, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetKey, WidgetLayout, WidgetPadding, WidgetProps,
-	WidgetReaction, WidgetSize,
+	Anchor, UiContext, WidgetDim, WidgetFlags, WidgetKey, WidgetPadding, WidgetProps, WidgetReaction, WidgetSize,
 };
 
 impl UiContext {

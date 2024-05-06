@@ -1,6 +1,5 @@
 use crate::math::rect::Rect;
 use crate::render::sprite::Sprite;
-use crate::render::SpritesheetId;
 
 #[derive(Debug)]
 #[repr(C)]
