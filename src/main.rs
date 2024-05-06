@@ -186,6 +186,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 						h: WidgetDim::Fill,
 					},
 					(snaek_sheet_id, snaek_sheet.box_embossed),
+					(snaek_sheet_id, snaek_sheet.box_carved),
 				);
 				ui.add_child(frame.id(), ewe_button.id());
 
@@ -202,6 +203,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 							h: WidgetDim::Fixed(9),
 						},
 						(snaek_sheet_id, snaek_sheet.box_embossed),
+						(snaek_sheet_id, snaek_sheet.box_carved),
 					);
 					ui.add_child(frame.id(), uwu_button.id());
 
@@ -217,6 +219,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 							h: WidgetDim::Fixed(9),
 						},
 						(snaek_sheet_id, snaek_sheet.box_embossed),
+						(snaek_sheet_id, snaek_sheet.box_carved),
 					);
 					ui.add_child(frame.id(), owo_button.id());
 

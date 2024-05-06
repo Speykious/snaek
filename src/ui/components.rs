@@ -32,6 +32,7 @@ impl UiContext {
 		text: Text,
 		size: WidgetSize,
 		normal_nss: (SpritesheetId, NineSlicingSprite),
+		hover_nss: (SpritesheetId, NineSlicingSprite),
 	) -> WidgetReaction {
 		use WidgetFlags as Wf;
 
@@ -54,6 +55,7 @@ impl UiContext {
 
 		if button.pressed() && button.hovered() {
 			let mut w_btn = self.widget_mut(button.id());
+			w_btn.props.nss = Some(hover_nss);
 			w_btn.props.offset = pos(1, 1);
 
 			let mut w_txt = self.widget_mut(text.id());
