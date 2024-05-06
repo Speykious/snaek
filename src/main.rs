@@ -123,9 +123,9 @@ fn game() -> Result<(), Box<dyn Error>> {
 			mouse.y = next_pos.1;
 		}
 
-		mouse.left_pressed = window.get_mouse_down(MouseButton::Left);
-		mouse.right_pressed = window.get_mouse_down(MouseButton::Right);
-		mouse.middle_pressed = window.get_mouse_down(MouseButton::Middle);
+		mouse.l_pressed = (window.get_mouse_down(MouseButton::Left), mouse.l_pressed.0);
+		mouse.r_pressed = (window.get_mouse_down(MouseButton::Right), mouse.r_pressed.0);
+		mouse.m_pressed = (window.get_mouse_down(MouseButton::Middle), mouse.m_pressed.0);
 
 		// state update
 		for bounce in &mut bounces {
@@ -165,7 +165,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 		// UI
 		{
-			let (frame_id, _) = ui.build_widget(WidgetProps {
+			let frame = ui.build_widget(WidgetProps {
 				key: wk!(),
 				anchor: Anchor::CENTER,
 				origin: Anchor::CENTER,
@@ -181,7 +181,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 				..WidgetProps::default()
 			});
 			{
-				let (ewe_button_id, ewe_button) = ui.button(
+				let ewe_button = ui.button(
 					wk!(),
 					renderer.text("ewe"),
 					WidgetSize {
@@ -189,16 +189,15 @@ fn game() -> Result<(), Box<dyn Error>> {
 						h: WidgetDim::Fill,
 					},
 					(snaek_sheet_id, snaek_sheet.box_embossed),
-					(snaek_sheet_id, snaek_sheet.box_carved),
 				);
-				ui.add_child(frame_id, ewe_button_id);
+				ui.add_child(frame.id(), ewe_button.id());
 
-				if ewe_button.clicked {
+				if ewe_button.clicked() {
 					println!("ewe");
 				}
 
 				for i in 0..3 {
-					let (uwu_button_id, uwu_button) = ui.button(
+					let uwu_button = ui.button(
 						wk!(i),
 						renderer.text("UwU"),
 						WidgetSize {
@@ -206,15 +205,14 @@ fn game() -> Result<(), Box<dyn Error>> {
 							h: WidgetDim::Fixed(9),
 						},
 						(snaek_sheet_id, snaek_sheet.box_embossed),
-						(snaek_sheet_id, snaek_sheet.box_carved),
 					);
-					ui.add_child(frame_id, uwu_button_id);
+					ui.add_child(frame.id(), uwu_button.id());
 
-					if uwu_button.clicked {
+					if uwu_button.clicked() {
 						println!("UwU ({})", i);
 					}
 
-					let (owo_button_id, owo_button) = ui.button(
+					let owo_button = ui.button(
 						wk!(i),
 						renderer.text("OwO"),
 						WidgetSize {
@@ -222,11 +220,10 @@ fn game() -> Result<(), Box<dyn Error>> {
 							h: WidgetDim::Fixed(9),
 						},
 						(snaek_sheet_id, snaek_sheet.box_embossed),
-						(snaek_sheet_id, snaek_sheet.box_carved),
 					);
-					ui.add_child(frame_id, owo_button_id);
+					ui.add_child(frame.id(), owo_button.id());
 
-					if owo_button.clicked {
+					if owo_button.clicked() {
 						println!("OwO ({})", i);
 					}
 				}

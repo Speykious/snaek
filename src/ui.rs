@@ -93,19 +93,45 @@ pub struct Widget {
 	/// If a widget hasn't been touched in the current frame,
 	/// we "free" it (using a free list)
 	last_frame_touched: u64,
-	reaction: WidgetReaction,
 	freed: bool,
+
+	hovered: bool,
+	pressed: bool,
+	clicked: bool,
 
 	// Layout state calculated each frame
 	solved_rect: Rect,
 	solved_min_size: Size,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct WidgetReaction {
-	pub hovered: bool,
-	pub pressed: bool,
-	pub clicked: bool,
+	id: WidgetId,
+	hovered: bool,
+	pressed: bool,
+	clicked: bool,
+}
+
+impl WidgetReaction {
+	#[inline]
+	pub const fn id(&self) -> WidgetId {
+		self.id
+	}
+
+	#[inline]
+	pub const fn hovered(&self) -> bool {
+		self.hovered
+	}
+
+	#[inline]
+	pub const fn pressed(&self) -> bool {
+		self.pressed
+	}
+
+	#[inline]
+	pub const fn clicked(&self) -> bool {
+		self.clicked
+	}
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -291,7 +317,7 @@ impl UiContext {
 		}
 	}
 
-	pub fn build_widget(&mut self, props: WidgetProps) -> (WidgetId, WidgetReaction) {
+	pub fn build_widget(&mut self, props: WidgetProps) -> WidgetReaction {
 		match self.keys.get(&props.key) {
 			Some(&id) => {
 				let mut widget = self.widget_mut(id);
@@ -319,7 +345,12 @@ impl UiContext {
 				widget.children_count = 0;
 				widget.props = props;
 
-				(id, widget.reaction)
+				WidgetReaction {
+					id,
+					hovered: widget.hovered,
+					pressed: widget.pressed,
+					clicked: widget.clicked,
+				}
 			}
 			None => {
 				let id = Self::id_from_index(self.widgets.len());
@@ -337,14 +368,22 @@ impl UiContext {
 					props,
 
 					last_frame_touched: self.current_frame,
-					reaction: WidgetReaction::default(),
 					freed: false,
+
+					hovered: false,
+					pressed: false,
+					clicked: false,
 
 					solved_rect: Rect::ZERO,
 					solved_min_size: Size::ZERO,
 				}));
 
-				(id, WidgetReaction::default())
+				WidgetReaction {
+					id,
+					hovered: false,
+					pressed: false,
+					clicked: false,
+				}
 			}
 		}
 	}
@@ -404,10 +443,14 @@ impl UiContext {
 				let widget = self.widget(w);
 				let props = &widget.props;
 
+				let mut solved_rect = widget.solved_rect;
+				solved_rect.x += widget.props.offset.x;
+				solved_rect.y += widget.props.offset.y;
+
 				if props.flags.has(WidgetFlags::DRAW_NINE_SLICE) {
 					if let Some((sheet_id, nss)) = props.nss {
 						draw_cmds.push(DrawCommand::NineSlicingSprite {
-							rect: widget.solved_rect,
+							rect: solved_rect,
 							sheet_id,
 							nss,
 							acf: alphacomp::over,
@@ -417,7 +460,7 @@ impl UiContext {
 
 				if props.flags.has(WidgetFlags::DRAW_BACKGROUND) {
 					draw_cmds.push(DrawCommand::Fill {
-						rect: widget.solved_rect,
+						rect: solved_rect,
 						color: props.bg_color,
 						acf: alphacomp::over,
 					});
@@ -425,7 +468,7 @@ impl UiContext {
 
 				if props.flags.has(WidgetFlags::DRAW_BORDER) {
 					draw_cmds.push(DrawCommand::Stroke {
-						rect: widget.solved_rect,
+						rect: solved_rect,
 						color: props.bg_color,
 						stroke_width: 1,
 						acf: alphacomp::over,
@@ -436,7 +479,7 @@ impl UiContext {
 					if let Some(text) = &widget.props.text {
 						draw_cmds.push(DrawCommand::Text {
 							text: text.text().clone(),
-							pos: widget.solved_rect.pos(),
+							pos: solved_rect.pos(),
 							acf: alphacomp::over,
 						});
 					}
@@ -460,6 +503,7 @@ impl UiContext {
 
 	pub fn draw_widgets(&mut self, draw_cmds: &mut Vec<DrawCommand>) {
 		draw_cmds.push(DrawCommand::BeginComposite);
+		draw_cmds.push(DrawCommand::Clear);
 		self.draw_widgets_rec(draw_cmds, Self::ROOT_WIDGET);
 		draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
 	}
@@ -468,17 +512,15 @@ impl UiContext {
 		let first_child = {
 			let mut widget = self.widget_mut(wid);
 
-			if widget.solved_rect.contains(mouse.x, mouse.y) {
-				let mut reaction = widget.reaction;
-				reaction.hovered = true;
-				reaction.pressed = mouse.left_pressed;
-				reaction.clicked = !mouse.left_pressed && widget.reaction.pressed;
-				widget.reaction = reaction;
-			} else {
-				widget.reaction.hovered = false;
-				widget.reaction.pressed = false;
-				widget.reaction.clicked = false;
-			}
+			let hovered_prev = widget.hovered;
+			let pressed_prev = widget.pressed;
+
+			widget.hovered = widget.solved_rect.contains(mouse.x, mouse.y);
+			widget.pressed = match widget.hovered {
+				true => mouse.l_pressed_start() || (mouse.l_pressed() && pressed_prev),
+				false => mouse.l_pressed() && pressed_prev,
+			};
+			widget.clicked = widget.hovered && mouse.l_pressed_end() && pressed_prev;
 
 			widget.first_child
 		};
@@ -508,7 +550,54 @@ impl UiContext {
 pub struct Mouse {
 	pub x: f32,
 	pub y: f32,
-	pub left_pressed: bool,
-	pub right_pressed: bool,
-	pub middle_pressed: bool,
+	pub l_pressed: (bool, bool),
+	pub r_pressed: (bool, bool),
+	pub m_pressed: (bool, bool),
+}
+
+impl Mouse {
+	#[inline]
+	pub const fn l_pressed(&self) -> bool {
+		self.l_pressed.0
+	}
+
+	#[inline]
+	pub const fn l_pressed_start(&self) -> bool {
+		self.l_pressed.0 && !self.l_pressed.1
+	}
+
+	#[inline]
+	pub const fn l_pressed_end(&self) -> bool {
+		!self.l_pressed.0 && self.l_pressed.1
+	}
+
+	#[inline]
+	pub const fn r_pressed(&self) -> bool {
+		self.r_pressed.0
+	}
+
+	#[inline]
+	pub const fn r_pressed_start(&self) -> bool {
+		self.r_pressed.0 && !self.r_pressed.1
+	}
+
+	#[inline]
+	pub const fn r_pressed_end(&self) -> bool {
+		!self.r_pressed.0 && self.r_pressed.1
+	}
+
+	#[inline]
+	pub const fn m_pressed(&self) -> bool {
+		self.m_pressed.0
+	}
+
+	#[inline]
+	pub const fn m_pressed_start(&self) -> bool {
+		self.m_pressed.0 && !self.m_pressed.1
+	}
+
+	#[inline]
+	pub const fn m_pressed_end(&self) -> bool {
+		!self.m_pressed.0 && self.m_pressed.1
+	}
 }

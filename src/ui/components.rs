@@ -10,7 +10,7 @@ use super::{
 };
 
 impl UiContext {
-	pub fn text(&mut self, key: WidgetKey, text: Text, anchor: Anchor, origin: Anchor) -> (WidgetId, WidgetReaction) {
+	pub fn text(&mut self, key: WidgetKey, text: Text, anchor: Anchor, origin: Anchor) -> WidgetReaction {
 		self.build_widget(WidgetProps {
 			key,
 
@@ -34,11 +34,10 @@ impl UiContext {
 		text: Text,
 		size: WidgetSize,
 		normal_nss: (SpritesheetId, NineSlicingSprite),
-		hover_nss: (SpritesheetId, NineSlicingSprite),
-	) -> (WidgetId, WidgetReaction) {
+	) -> WidgetReaction {
 		use WidgetFlags as Wf;
 
-		let (button_id, button) = self.build_widget(WidgetProps {
+		let button = self.build_widget(WidgetProps {
 			key,
 
 			flags: Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::DRAW_NINE_SLICE,
@@ -52,13 +51,17 @@ impl UiContext {
 			..WidgetProps::default()
 		});
 
-		if button.pressed {
-			self.widget_mut(button_id).props.nss = Some(hover_nss);
+		let text = self.text(wk!([key]), text, Anchor::CENTER, Anchor::CENTER);
+		self.add_child(button.id(), text.id());
+
+		if button.pressed() && button.hovered() {
+			let mut w_btn = self.widget_mut(button.id());
+			w_btn.props.offset = pos(1, 1);
+
+			let mut w_txt = self.widget_mut(text.id());
+			w_txt.props.offset = pos(1, 1);
 		}
 
-		let (text_id, _) = self.text(wk!([key]), text, Anchor::CENTER, Anchor::CENTER);
-		self.add_child(button_id, text_id);
-
-		(button_id, button)
+		button
 	}
 }
