@@ -11,7 +11,7 @@ use crate::math::rect::Rect;
 use crate::math::size::Size;
 use crate::render::color::{alphacomp, Color};
 use crate::render::sprite::NineSlicingSprite;
-use crate::render::{DrawCommand, Text, SpritesheetId};
+use crate::render::{DrawCommand, SpritesheetId, Text};
 use crate::wk;
 
 pub mod components;
@@ -93,11 +93,19 @@ pub struct Widget {
 	/// If a widget hasn't been touched in the current frame,
 	/// we "free" it (using a free list)
 	last_frame_touched: u64,
+	reaction: WidgetReaction,
 	freed: bool,
 
 	// Layout state calculated each frame
 	solved_rect: Rect,
 	solved_min_size: Size,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct WidgetReaction {
+	pub hovered: bool,
+	pub pressed: bool,
+	pub clicked: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -166,6 +174,7 @@ impl WidgetPadding {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[repr(transparent)]
 pub struct WidgetFlags(u32);
 
 #[rustfmt::skip]
@@ -180,7 +189,7 @@ impl WidgetFlags {
 }
 
 impl WidgetFlags {
-	pub fn has(&self, flags: WidgetFlags) -> bool {
+	pub fn has(&self, flags: Self) -> bool {
 		self.0 & flags.0 == flags.0
 	}
 }
@@ -282,7 +291,7 @@ impl UiContext {
 		}
 	}
 
-	pub fn build_widget(&mut self, props: WidgetProps) -> WidgetId {
+	pub fn build_widget(&mut self, props: WidgetProps) -> (WidgetId, WidgetReaction) {
 		match self.keys.get(&props.key) {
 			Some(&id) => {
 				let mut widget = self.widget_mut(id);
@@ -310,7 +319,7 @@ impl UiContext {
 				widget.children_count = 0;
 				widget.props = props;
 
-				id
+				(id, widget.reaction)
 			}
 			None => {
 				let id = Self::id_from_index(self.widgets.len());
@@ -328,18 +337,21 @@ impl UiContext {
 					props,
 
 					last_frame_touched: self.current_frame,
+					reaction: WidgetReaction::default(),
 					freed: false,
 
 					solved_rect: Rect::ZERO,
 					solved_min_size: Size::ZERO,
 				}));
 
-				id
+				(id, WidgetReaction::default())
 			}
 		}
 	}
 
 	pub fn add_child(&self, wid: WidgetId, child_id: WidgetId) {
+		debug_assert_ne!(wid, child_id, "Cannot add a widget as its own child");
+
 		let mut w = self.widget_mut(wid);
 		w.children_count += 1;
 
@@ -452,6 +464,37 @@ impl UiContext {
 		draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
 	}
 
+	fn react_rec(&mut self, mouse: &Mouse, wid: WidgetId) {
+		let first_child = {
+			let mut widget = self.widget_mut(wid);
+
+			if widget.solved_rect.contains(mouse.x, mouse.y) {
+				let mut reaction = widget.reaction;
+				reaction.hovered = true;
+				reaction.pressed = mouse.left_pressed;
+				reaction.clicked = !mouse.left_pressed && widget.reaction.pressed;
+				widget.reaction = reaction;
+			} else {
+				widget.reaction.hovered = false;
+				widget.reaction.pressed = false;
+				widget.reaction.clicked = false;
+			}
+
+			widget.first_child
+		};
+
+		let mut child = first_child;
+		while let Some(ch) = child {
+			self.react_rec(mouse, ch);
+			child = self.widget(ch).next;
+		}
+	}
+
+	pub fn react(&mut self, mouse: &Mouse) {
+		// oh no, not React D:
+		self.react_rec(mouse, Self::ROOT_WIDGET);
+	}
+
 	pub fn widget(&self, wid: WidgetId) -> Ref<'_, Widget> {
 		self.widgets[Self::index_from_id(wid)].borrow()
 	}
@@ -459,4 +502,13 @@ impl UiContext {
 	pub fn widget_mut(&self, wid: WidgetId) -> RefMut<'_, Widget> {
 		self.widgets[Self::index_from_id(wid)].borrow_mut()
 	}
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Mouse {
+	pub x: f32,
+	pub y: f32,
+	pub left_pressed: bool,
+	pub right_pressed: bool,
+	pub middle_pressed: bool,
 }

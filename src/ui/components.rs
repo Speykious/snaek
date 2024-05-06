@@ -1,36 +1,16 @@
 use crate::math::pos::{pos, Pos};
 use crate::render::color::{alphacomp, Color};
 use crate::render::sprite::NineSlicingSprite;
-use crate::render::{DrawCommand, Text, SpritesheetId};
+use crate::render::{DrawCommand, SpritesheetId, Text};
 use crate::wk;
 
 use super::{
 	Anchor, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetKey, WidgetLayout, WidgetPadding, WidgetProps,
-	WidgetSize,
+	WidgetReaction, WidgetSize,
 };
 
 impl UiContext {
-	pub fn frame(
-		&mut self,
-		key: WidgetKey,
-		anchor: Anchor,
-		origin: Anchor,
-		size: WidgetSize,
-		layout: WidgetLayout,
-	) -> WidgetId {
-		self.build_widget(WidgetProps {
-			key,
-
-			anchor,
-			origin,
-			size,
-			layout,
-
-			..WidgetProps::default()
-		})
-	}
-
-	pub fn text(&mut self, key: WidgetKey, text: Text, anchor: Anchor, origin: Anchor) -> WidgetId {
+	pub fn text(&mut self, key: WidgetKey, text: Text, anchor: Anchor, origin: Anchor) -> (WidgetId, WidgetReaction) {
 		self.build_widget(WidgetProps {
 			key,
 
@@ -55,10 +35,10 @@ impl UiContext {
 		size: WidgetSize,
 		normal_nss: (SpritesheetId, NineSlicingSprite),
 		hover_nss: (SpritesheetId, NineSlicingSprite),
-	) -> WidgetId {
+	) -> (WidgetId, WidgetReaction) {
 		use WidgetFlags as Wf;
 
-		let button_id = self.build_widget(WidgetProps {
+		let (button_id, button) = self.build_widget(WidgetProps {
 			key,
 
 			flags: Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::DRAW_NINE_SLICE,
@@ -72,9 +52,13 @@ impl UiContext {
 			..WidgetProps::default()
 		});
 
-		let text_id = self.text(wk!([key]), text, Anchor::CENTER, Anchor::CENTER);
+		if button.pressed {
+			self.widget_mut(button_id).props.nss = Some(hover_nss);
+		}
+
+		let (text_id, _) = self.text(wk!([key]), text, Anchor::CENTER, Anchor::CENTER);
 		self.add_child(button_id, text_id);
 
-		button_id
+		(button_id, button)
 	}
 }

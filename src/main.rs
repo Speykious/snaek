@@ -4,6 +4,8 @@
 use std::error::Error;
 use std::time::Duration;
 
+use crate::ui::WidgetFlags;
+
 use self::math::pos::{pos, Pos};
 use self::math::rect::Rect;
 use self::math::size::size;
@@ -11,11 +13,11 @@ use self::render::bitmap::Bitmap;
 use self::render::color::{alphacomp, Color};
 use image::{ImageFormat, ImageResult};
 use math::size::Size;
-use minifb::{Key, MouseMode, Scale, ScaleMode, Window, WindowOptions};
+use minifb::{Key, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::{DrawCommand, Renderer, SpritesheetId};
 use snake::SnaekSheet;
-use ui::{Anchor, FlexDirection, UiContext, WidgetDim, WidgetLayout, WidgetSize};
+use ui::{Anchor, FlexDirection, Mouse, UiContext, WidgetDim, WidgetLayout, WidgetPadding, WidgetProps, WidgetSize};
 
 mod math;
 mod render;
@@ -109,16 +111,21 @@ fn game() -> Result<(), Box<dyn Error>> {
 	];
 
 	let mut draw_cmds = Vec::new();
-	let mut mouse_pos = Pos::ZERO;
+	let mut mouse = Mouse::default();
 	while window.is_open() {
 		// input handling
 		if window.is_key_down(Key::Escape) {
 			break;
 		}
 
-		if let Some(next_pos) = window.get_mouse_pos(MouseMode::Clamp) {
-			mouse_pos = pos(next_pos.0.round() as i16, next_pos.1.round() as i16);
+		if let Some(next_pos) = window.get_mouse_pos(MouseMode::Discard) {
+			mouse.x = next_pos.0;
+			mouse.y = next_pos.1;
 		}
+
+		mouse.left_pressed = window.get_mouse_down(MouseButton::Left);
+		mouse.right_pressed = window.get_mouse_down(MouseButton::Right);
+		mouse.middle_pressed = window.get_mouse_down(MouseButton::Middle);
 
 		// state update
 		for bounce in &mut bounces {
@@ -154,72 +161,81 @@ fn game() -> Result<(), Box<dyn Error>> {
 			acf: alphacomp::dst,
 		});
 
-		draw_rectangles_bouncing(
-			&renderer,
-			&bounces,
-			snaek_sheet_id,
-			&snaek_sheet,
-			mouse_pos,
-			&mut draw_cmds,
-		);
+		draw_rectangles_bouncing(&renderer, &bounces, snaek_sheet_id, &snaek_sheet, &mut draw_cmds);
 
 		// UI
 		{
-			let frame_id = ui.frame(
-				wk!(),
-				Anchor::CENTER,
-				Anchor::CENTER,
-				WidgetSize {
+			let (frame_id, _) = ui.build_widget(WidgetProps {
+				key: wk!(),
+				anchor: Anchor::CENTER,
+				origin: Anchor::CENTER,
+				size: WidgetSize {
 					w: WidgetDim::Fixed(30),
-					h: WidgetDim::Fixed(HEIGHT - 4),
+					h: WidgetDim::Fill,
 				},
-				WidgetLayout::Flex {
+				padding: WidgetPadding::all(2),
+				layout: WidgetLayout::Flex {
 					direction: FlexDirection::Vertical,
 					gap: 2,
 				},
-			);
-
-			let ewe_button_id = ui.button(
-				wk!(),
-				renderer.text("ewe"),
-				WidgetSize {
-					w: WidgetDim::Fill,
-					h: WidgetDim::Fill,
-				},
-				(snaek_sheet_id, snaek_sheet.box_embossed),
-				(snaek_sheet_id, snaek_sheet.box_carved),
-			);
-			ui.add_child(frame_id, ewe_button_id);
-
-			for i in 0..3 {
-				let uwu_button_id = ui.button(
-					wk!(i),
-					renderer.text("UwU"),
+				..WidgetProps::default()
+			});
+			{
+				let (ewe_button_id, ewe_button) = ui.button(
+					wk!(),
+					renderer.text("ewe"),
 					WidgetSize {
 						w: WidgetDim::Fill,
-						h: WidgetDim::Fixed(9),
+						h: WidgetDim::Fill,
 					},
 					(snaek_sheet_id, snaek_sheet.box_embossed),
 					(snaek_sheet_id, snaek_sheet.box_carved),
 				);
-				ui.add_child(frame_id, uwu_button_id);
+				ui.add_child(frame_id, ewe_button_id);
 
-				let owo_button_id = ui.button(
-					wk!(i),
-					renderer.text("OwO"),
-					WidgetSize {
-						w: WidgetDim::Fill,
-						h: WidgetDim::Fixed(9),
-					},
-					(snaek_sheet_id, snaek_sheet.box_embossed),
-					(snaek_sheet_id, snaek_sheet.box_carved),
-				);
-				ui.add_child(frame_id, owo_button_id);
+				if ewe_button.clicked {
+					println!("ewe");
+				}
+
+				for i in 0..3 {
+					let (uwu_button_id, uwu_button) = ui.button(
+						wk!(i),
+						renderer.text("UwU"),
+						WidgetSize {
+							w: WidgetDim::Fill,
+							h: WidgetDim::Fixed(9),
+						},
+						(snaek_sheet_id, snaek_sheet.box_embossed),
+						(snaek_sheet_id, snaek_sheet.box_carved),
+					);
+					ui.add_child(frame_id, uwu_button_id);
+
+					if uwu_button.clicked {
+						println!("UwU ({})", i);
+					}
+
+					let (owo_button_id, owo_button) = ui.button(
+						wk!(i),
+						renderer.text("OwO"),
+						WidgetSize {
+							w: WidgetDim::Fill,
+							h: WidgetDim::Fixed(9),
+						},
+						(snaek_sheet_id, snaek_sheet.box_embossed),
+						(snaek_sheet_id, snaek_sheet.box_carved),
+					);
+					ui.add_child(frame_id, owo_button_id);
+
+					if owo_button.clicked {
+						println!("OwO ({})", i);
+					}
+				}
 			}
 		}
 		ui.solve_layout();
 		ui.draw_widgets(&mut draw_cmds);
 		ui.free_untouched_widgets();
+		ui.react(&mouse);
 
 		renderer.draw(&draw_cmds);
 
@@ -236,7 +252,6 @@ fn draw_rectangles_bouncing(
 	bounces: &[Bounce],
 	snaek_sheet_id: SpritesheetId,
 	snaek_sheet: &SnaekSheet,
-	mouse_pos: Pos,
 	draw_cmds: &mut Vec<DrawCommand>,
 ) {
 	draw_cmds.push(DrawCommand::BeginComposite);
