@@ -97,18 +97,18 @@ impl Bitmap {
 		}
 	}
 
-	pub fn fill(&mut self, pixel: Color, acf: AlphaCompFn) {
+	pub fn fill(&mut self, color: Color, acf: AlphaCompFn) {
 		for px in &mut self.buffer {
-			*px = (acf)(pixel, Color::from_hex(*px)).to_u32();
+			*px = (acf)(color, Color::from_hex(*px)).to_u32();
 		}
 	}
 
-	pub fn fill_area(&mut self, pixel: Color, rect: Rect, acf: AlphaCompFn) {
+	pub fn fill_area(&mut self, color: Color, rect: Rect, acf: AlphaCompFn) {
 		let rect = self.crop_rect(rect);
 
 		for y in 0..rect.h as i16 {
 			for px in self.line_mut(pos(rect.x, rect.y + y), rect.w) {
-				*px = (acf)(pixel, Color::from_hex(*px)).to_u32();
+				*px = (acf)(color, Color::from_hex(*px)).to_u32();
 			}
 		}
 	}

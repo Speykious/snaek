@@ -39,7 +39,7 @@ fn main() {
 
 #[derive(Debug, Clone)]
 struct Bounce {
-	pub pixel: Color,
+	pub color: Color,
 	pub rect: Rect,
 	pub dpos: Pos,
 }
@@ -91,17 +91,17 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 	let mut bounces = [
 		Bounce {
-			pixel: Color::from_hex(0xff801234),
+			color: Color::from_hex(0xff801234),
 			rect: Rect::from_pos_size(center + pos(-8, -10), bounce_size),
 			dpos: pos(-1, -1),
 		},
 		Bounce {
-			pixel: Color::from_hex(0x80128034),
+			color: Color::from_hex(0x80128034),
 			rect: Rect::from_pos_size(center + pos(9, -13), bounce_size),
 			dpos: pos(1, -1),
 		},
 		Bounce {
-			pixel: Color::from_hex(0xff123480),
+			color: Color::from_hex(0xff123480),
 			rect: Rect::from_pos_size(center + pos(11, 12), bounce_size),
 			dpos: pos(1, 1),
 		},
@@ -262,7 +262,7 @@ fn draw_rectangles_bouncing(
 		for bounce in bounces {
 			draw_cmds.push(DrawCommand::Fill {
 				rect: bounce.rect,
-				color: bounce.pixel,
+				color: bounce.color,
 				acf: alphacomp::add,
 			});
 		}
