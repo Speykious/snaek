@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::math::pos::pos;
 use crate::render::color::alphacomp::{self, AlphaCompFn};
 use crate::render::color::Color;
@@ -7,7 +9,8 @@ use crate::ui::WidgetSprite;
 use crate::wk;
 
 use super::{
-	Anchor, FlexDirection, UiContext, Widget, WidgetDim, WidgetFlags, WidgetId, WidgetKey, WidgetLayout, WidgetPadding, WidgetProps, WidgetReaction, WidgetSize
+	Anchor, FlexDirection, UiContext, Widget, WidgetDim, WidgetFlags, WidgetId, WidgetKey, WidgetLayout, WidgetPadding,
+	WidgetProps, WidgetReaction, WidgetSize,
 };
 
 impl UiContext {
@@ -179,6 +182,87 @@ impl UiContext {
 			}
 
 			self.add_child(display.id(), digit_holder.id());
+		}
+
+		display
+	}
+
+	pub fn time_display(
+		&mut self,
+		key: WidgetKey,
+		time: Duration,
+		sheet_id: SpritesheetId,
+		display_box: NineSlicingSprite,
+		colon_sprite: Sprite,
+		digit_sprites: &[Sprite; 10],
+	) -> WidgetReaction {
+		let display = self.build_widget(WidgetProps {
+			key,
+			flags: WidgetFlags::DRAW_SPRITE,
+			size: WidgetSize::hug(),
+			sprite: Some(WidgetSprite::NineSlice(sheet_id, display_box)),
+			layout: WidgetLayout::Flex {
+				direction: FlexDirection::Horizontal,
+				gap: 1,
+			},
+			padding: WidgetPadding::all(2),
+			..WidgetProps::default()
+		});
+
+		let seconds = time.as_secs();
+		let minutes = ((seconds / 60) % 60) as usize;
+		let seconds = (seconds % 60) as usize;
+		let millis = (time.as_millis() % 1000) as usize;
+
+		for (i, d) in [(1, (minutes / 10) % 10), (0, minutes % 10)] {
+			let digit = self.build_widget(WidgetProps {
+				key: wk!([key] i),
+				flags: WidgetFlags::DRAW_SPRITE,
+				size: WidgetSize::hug(),
+				sprite: Some(WidgetSprite::Simple(sheet_id, digit_sprites[d])),
+				..WidgetProps::default()
+			});
+			self.add_child(display.id(), digit.id());
+		}
+
+		let colon = self.build_widget(WidgetProps {
+			key: wk!([key]),
+			flags: WidgetFlags::DRAW_SPRITE,
+			size: WidgetSize::hug(),
+			sprite: Some(WidgetSprite::Simple(sheet_id, colon_sprite)),
+			..WidgetProps::default()
+		});
+		self.add_child(display.id(), colon.id());
+
+		for (i, d) in [(1, (seconds / 10) % 10), (0, seconds % 10)] {
+			let digit = self.build_widget(WidgetProps {
+				key: wk!([key] i),
+				flags: WidgetFlags::DRAW_SPRITE,
+				size: WidgetSize::hug(),
+				sprite: Some(WidgetSprite::Simple(sheet_id, digit_sprites[d])),
+				..WidgetProps::default()
+			});
+			self.add_child(display.id(), digit.id());
+		}
+
+		let colon = self.build_widget(WidgetProps {
+			key: wk!([key]),
+			flags: WidgetFlags::DRAW_SPRITE,
+			size: WidgetSize::hug(),
+			sprite: Some(WidgetSprite::Simple(sheet_id, colon_sprite)),
+			..WidgetProps::default()
+		});
+		self.add_child(display.id(), colon.id());
+
+		for (i, d) in [(2, (millis / 100) % 10), (1, (millis / 10) % 10), (0, millis % 10)] {
+			let digit = self.build_widget(WidgetProps {
+				key: wk!([key] i),
+				flags: WidgetFlags::DRAW_SPRITE,
+				size: WidgetSize::hug(),
+				sprite: Some(WidgetSprite::Simple(sheet_id, digit_sprites[d])),
+				..WidgetProps::default()
+			});
+			self.add_child(display.id(), digit.id());
 		}
 
 		display

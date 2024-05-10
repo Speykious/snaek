@@ -2,7 +2,7 @@
 #![allow(unused)] // TODO: remove this thing as soon as possible
 
 use std::error::Error;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use self::math::pos::pos;
 use self::math::size::size;
@@ -78,8 +78,9 @@ fn game() -> Result<(), Box<dyn Error>> {
 	};
 
 	let mut window = Window::new("Snaek", WIDTH as usize, HEIGHT as usize, options)?;
-	window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 60)));
+	window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 300)));
 
+	let start = Instant::now();
 	let mut bananas_count = 23;
 
 	let mut draw_cmds = Vec::new();
@@ -206,7 +207,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 				sprite: Some(WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed)),
 				acf: Some(alphacomp::dst),
 				size: WidgetSize::fill(),
-				padding: WidgetPadding::hv(4, 3),
+				padding: WidgetPadding::hv(5, 4),
 				layout: WidgetLayout::Flex {
 					direction: FlexDirection::Vertical,
 					gap: 2,
@@ -222,7 +223,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 					},
 					layout: WidgetLayout::Flex {
 						direction: FlexDirection::Horizontal,
-						gap: 2,
+						gap: 3,
 					},
 					..WidgetProps::default()
 				});
@@ -288,6 +289,35 @@ fn game() -> Result<(), Box<dyn Error>> {
 						ui.add_child(middle_frame.id(), btn_playpause.id());
 					}
 					ui.add_child(display_frame.id(), middle_frame.id());
+
+					let right_frame = ui.build_widget(WidgetProps {
+						key: wk!(),
+						size: WidgetSize::fill(),
+						layout: WidgetLayout::Flex {
+							direction: FlexDirection::Vertical,
+							gap: 2,
+						},
+						..WidgetProps::default()
+					});
+					{
+						let filler = ui.build_widget(WidgetProps {
+							key: wk!(),
+							size: WidgetSize::fill(),
+							..WidgetProps::default()
+						});
+						ui.add_child(right_frame.id(), filler.id());
+
+						let time_display = ui.time_display(
+							wk!(),
+							start.elapsed(),
+							snaek_sheet_id,
+							snaek_sheet.box_num_display,
+							snaek_sheet.num_colon,
+							&snaek_sheet.nums,
+						);
+						ui.add_child(right_frame.id(), time_display.id());
+					}
+					ui.add_child(display_frame.id(), right_frame.id());
 				}
 				ui.add_child(game_frame.id(), display_frame.id());
 			}
