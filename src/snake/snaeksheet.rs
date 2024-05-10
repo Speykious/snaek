@@ -64,49 +64,13 @@ pub struct SnaekSheet {
 	pub num_bang: Sprite,
 	/// Colon on the small number display
 	pub num_colon: Sprite,
-	/// digit zero on the small number display
-	pub num_0: Sprite,
-	/// digit one on the small number display
-	pub num_1: Sprite,
-	/// digit two on the small number display
-	pub num_2: Sprite,
-	/// digit three on the small number display
-	pub num_3: Sprite,
-	/// digit four on the small number display
-	pub num_4: Sprite,
-	/// digit five on the small number display
-	pub num_5: Sprite,
-	/// digit six on the small number display
-	pub num_6: Sprite,
-	/// digit seven on the small number display
-	pub num_7: Sprite,
-	/// digit eight on the small number display
-	pub num_8: Sprite,
-	/// digit nine on the small number display
-	pub num_9: Sprite,
+	/// digits on the small number display
+	pub nums: [Sprite; 10],
 
 	/// digit placeholder on the big number display
 	pub bignum_placeholder: Sprite,
-	/// digit zero on the big number display
-	pub bignum_0: Sprite,
-	/// digit one on the big number display
-	pub bignum_1: Sprite,
-	/// digit two on the big number display
-	pub bignum_2: Sprite,
-	/// digit three on the big number display
-	pub bignum_3: Sprite,
-	/// digit four on the big number display
-	pub bignum_4: Sprite,
-	/// digit five on the big number display
-	pub bignum_5: Sprite,
-	/// digit six on the big number display
-	pub bignum_6: Sprite,
-	/// digit seven on the big number display
-	pub bignum_7: Sprite,
-	/// digit eight on the big number display
-	pub bignum_8: Sprite,
-	/// digit nine on the big number display
-	pub bignum_9: Sprite,
+	/// digits on the big number display
+	pub bignums: [Sprite; 10],
 }
 
 #[rustfmt::skip]
@@ -146,27 +110,29 @@ pub fn snaek_sheet() -> SnaekSheet {
 
 		num_bang:           Sprite::new(Rect::from_xywh(  0,  23,  1,  5)),
 		num_colon:          Sprite::new(Rect::from_xywh(  2,  23,  1,  5)),
-		num_0:              Sprite::new(Rect::from_xywh(  4,  23,  3,  5)),
-		num_1:              Sprite::new(Rect::from_xywh(  7,  23,  3,  5)),
-		num_2:              Sprite::new(Rect::from_xywh( 10,  23,  3,  5)),
-		num_3:              Sprite::new(Rect::from_xywh( 13,  23,  3,  5)),
-		num_4:              Sprite::new(Rect::from_xywh( 16,  23,  3,  5)),
-		num_5:              Sprite::new(Rect::from_xywh( 19,  23,  3,  5)),
-		num_6:              Sprite::new(Rect::from_xywh( 22,  23,  3,  5)),
-		num_7:              Sprite::new(Rect::from_xywh( 25,  23,  3,  5)),
-		num_8:              Sprite::new(Rect::from_xywh( 28,  23,  3,  5)),
-		num_9:              Sprite::new(Rect::from_xywh( 31,  23,  3,  5)),
+
+		nums:             [ Sprite::new(Rect::from_xywh(  4,  23,  3,  5)),
+		                    Sprite::new(Rect::from_xywh(  7,  23,  3,  5)),
+		                    Sprite::new(Rect::from_xywh( 10,  23,  3,  5)),
+		                    Sprite::new(Rect::from_xywh( 13,  23,  3,  5)),
+		                    Sprite::new(Rect::from_xywh( 16,  23,  3,  5)),
+		                    Sprite::new(Rect::from_xywh( 19,  23,  3,  5)),
+		                    Sprite::new(Rect::from_xywh( 22,  23,  3,  5)),
+		                    Sprite::new(Rect::from_xywh( 25,  23,  3,  5)),
+		                    Sprite::new(Rect::from_xywh( 28,  23,  3,  5)),
+		                    Sprite::new(Rect::from_xywh( 31,  23,  3,  5)) ],
 
 		bignum_placeholder: Sprite::new(Rect::from_xywh( 28,   0,  8, 14)),
-		bignum_0:           Sprite::new(Rect::from_xywh( 36,   0,  8, 14)),
-		bignum_1:           Sprite::new(Rect::from_xywh( 44,   0,  8, 14)),
-		bignum_2:           Sprite::new(Rect::from_xywh( 52,   0,  8, 14)),
-		bignum_3:           Sprite::new(Rect::from_xywh( 60,   0,  8, 14)),
-		bignum_4:           Sprite::new(Rect::from_xywh( 68,   0,  8, 14)),
-		bignum_5:           Sprite::new(Rect::from_xywh( 36,  14,  8, 14)),
-		bignum_6:           Sprite::new(Rect::from_xywh( 44,  14,  8, 14)),
-		bignum_7:           Sprite::new(Rect::from_xywh( 52,  14,  8, 14)),
-		bignum_8:           Sprite::new(Rect::from_xywh( 60,  14,  8, 14)),
-		bignum_9:           Sprite::new(Rect::from_xywh( 68,  14,  8, 14)),
+
+		bignums:          [ Sprite::new(Rect::from_xywh( 36,   0,  8, 14)),
+		                    Sprite::new(Rect::from_xywh( 44,   0,  8, 14)),
+		                    Sprite::new(Rect::from_xywh( 52,   0,  8, 14)),
+		                    Sprite::new(Rect::from_xywh( 60,   0,  8, 14)),
+		                    Sprite::new(Rect::from_xywh( 68,   0,  8, 14)),
+		                    Sprite::new(Rect::from_xywh( 36,  14,  8, 14)),
+		                    Sprite::new(Rect::from_xywh( 44,  14,  8, 14)),
+		                    Sprite::new(Rect::from_xywh( 52,  14,  8, 14)),
+		                    Sprite::new(Rect::from_xywh( 60,  14,  8, 14)),
+		                    Sprite::new(Rect::from_xywh( 68,  14,  8, 14)) ],
 	}
 }

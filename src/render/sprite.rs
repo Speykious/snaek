@@ -137,3 +137,7 @@ impl NineSlicingSprite {
 		}
 	}
 }
+
+pub struct DigitSprites {
+	
+}

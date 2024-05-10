@@ -1,6 +1,5 @@
 #![allow(clippy::too_many_arguments)]
-// TODO: remove this thing as soon as possible
-#![allow(unused)]
+#![allow(unused)] // TODO: remove this thing as soon as possible
 
 use std::error::Error;
 use std::time::Duration;
@@ -11,7 +10,7 @@ use self::render::bitmap::Bitmap;
 use self::render::color::{alphacomp, Color};
 use image::{ImageFormat, ImageResult};
 use math::size::Size;
-use minifb::{Key, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
+use minifb::{CursorStyle, Key, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::{DrawCommand, Renderer};
 use ui::{
@@ -80,6 +79,8 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 	let mut window = Window::new("Snaek", WIDTH as usize, HEIGHT as usize, options)?;
 	window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 60)));
+
+	let mut bananas_count = 23;
 
 	let mut draw_cmds = Vec::new();
 	let mut mouse = Mouse::default();
@@ -204,10 +205,10 @@ fn game() -> Result<(), Box<dyn Error>> {
 				flags: WidgetFlags::DRAW_SPRITE,
 				sprite: Some(WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed)),
 				acf: Some(alphacomp::dst),
-				anchor: Anchor::CENTER,
-				origin: Anchor::CENTER,
+				anchor: Anchor::TOP_LEFT,
+				origin: Anchor::TOP_LEFT,
 				size: WidgetSize::fill(),
-				padding: WidgetPadding::all(3),
+				padding: WidgetPadding::hv(4, 3),
 				layout: WidgetLayout::Flex {
 					direction: FlexDirection::Vertical,
 					gap: 2,
@@ -215,55 +216,15 @@ fn game() -> Result<(), Box<dyn Error>> {
 				..WidgetProps::default()
 			});
 			{
-				let ewe_button = ui.btn_box(
+				let big_display = ui.big_3digits_display(
 					wk!(),
-					renderer.text("ewe"),
-					WidgetSize {
-						w: WidgetDim::Fixed(30),
-						h: WidgetDim::Fill,
-					},
-					WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
-					WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
+					bananas_count,
+					snaek_sheet_id,
+					snaek_sheet.box_num_display,
+					snaek_sheet.bignum_placeholder,
+					&snaek_sheet.bignums,
 				);
-				ui.add_child(game_frame.id(), ewe_button.id());
-
-				if ewe_button.clicked() {
-					println!("ewe");
-				}
-
-				for i in 0..2 {
-					let uwu_button = ui.btn_box(
-						wk!(i),
-						renderer.text("UwU"),
-						WidgetSize {
-							w: WidgetDim::Fixed(30),
-							h: WidgetDim::Hug,
-						},
-						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
-						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
-					);
-					ui.add_child(game_frame.id(), uwu_button.id());
-
-					if uwu_button.clicked() {
-						println!("UwU ({})", i);
-					}
-
-					let owo_button = ui.btn_box(
-						wk!(i),
-						renderer.text("OwO"),
-						WidgetSize {
-							w: WidgetDim::Fixed(30),
-							h: WidgetDim::Hug,
-						},
-						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
-						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
-					);
-					ui.add_child(game_frame.id(), owo_button.id());
-
-					if owo_button.clicked() {
-						println!("OwO ({})", i);
-					}
-				}
+				ui.add_child(game_frame.id(), big_display.id());
 			}
 			ui.add_child(window_frame.id(), game_frame.id());
 		}

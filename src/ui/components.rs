@@ -7,8 +7,8 @@ use crate::ui::WidgetSprite;
 use crate::wk;
 
 use super::{
-	Anchor, UiContext, Widget, WidgetDim, WidgetFlags, WidgetKey, WidgetPadding, WidgetProps, WidgetReaction,
-	WidgetSize,
+	Anchor, FlexDirection, UiContext, Widget, WidgetDim, WidgetFlags, WidgetKey, WidgetLayout, WidgetPadding,
+	WidgetProps, WidgetReaction, WidgetSize,
 };
 
 impl UiContext {
@@ -130,5 +130,56 @@ impl UiContext {
 		}
 
 		button
+	}
+
+	pub fn big_3digits_display(
+		&mut self,
+		key: WidgetKey,
+		n: usize,
+		sheet_id: SpritesheetId,
+		display_box: NineSlicingSprite,
+		placeholder_sprite: Sprite,
+		digit_sprites: &[Sprite; 10],
+	) -> WidgetReaction {
+		let display = self.build_widget(WidgetProps {
+			key,
+			flags: WidgetFlags::DRAW_SPRITE,
+			size: WidgetSize::hug(),
+			sprite: Some(WidgetSprite::NineSlice(sheet_id, display_box)),
+			layout: WidgetLayout::Flex {
+				direction: FlexDirection::Horizontal,
+				gap: 2,
+			},
+			padding: WidgetPadding::hv(3, 2),
+			..WidgetProps::default()
+		});
+
+		let mut after_first_digit = false;
+		for (i, d) in [(2, (n / 100) % 10), (1, (n / 10) % 10), (0, n % 10)] {
+			let digit_holder = self.build_widget(WidgetProps {
+				key: wk!([key] i),
+				flags: WidgetFlags::DRAW_SPRITE,
+				size: WidgetSize::hug(),
+				sprite: Some(WidgetSprite::Simple(sheet_id, placeholder_sprite)),
+				..WidgetProps::default()
+			});
+
+			if after_first_digit || d > 0 {
+				let digit = self.build_widget(WidgetProps {
+					key: wk!([key] i),
+					flags: WidgetFlags::DRAW_SPRITE,
+					size: WidgetSize::hug(),
+					sprite: Some(WidgetSprite::Simple(sheet_id, digit_sprites[d])),
+					..WidgetProps::default()
+				});
+				self.add_child(digit_holder.id(), digit.id());
+
+				after_first_digit = true;
+			}
+
+			self.add_child(display.id(), digit_holder.id());
+		}
+
+		display
 	}
 }
