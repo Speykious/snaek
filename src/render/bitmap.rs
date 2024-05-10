@@ -105,6 +105,9 @@ impl Bitmap {
 
 	pub fn fill_area(&mut self, color: Color, rect: Rect, acf: AlphaCompFn) {
 		let rect = self.crop_rect(rect);
+		if rect.w == 0 || rect.h == 0 {
+			return;
+		}
 
 		for y in 0..rect.h as i16 {
 			for px in self.line_mut(pos(rect.x, rect.y + y), rect.w) {

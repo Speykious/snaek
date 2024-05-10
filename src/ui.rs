@@ -7,8 +7,9 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, DerefMut};
 use crate::math::pos::Pos;
 use crate::math::rect::Rect;
 use crate::math::size::Size;
+use crate::render::color::alphacomp::AlphaCompFn;
 use crate::render::color::{alphacomp, Color};
-use crate::render::sprite::NineSlicingSprite;
+use crate::render::sprite::{NineSlicingSprite, Sprite};
 use crate::render::{DrawCommand, SpritesheetId, Text};
 
 pub mod components;
@@ -167,6 +168,20 @@ pub struct WidgetSize {
 	pub h: WidgetDim,
 }
 
+impl WidgetSize {
+	pub const fn fill() -> Self {
+		Self { w: WidgetDim::Fill, h: WidgetDim::Fill }
+	}
+
+	pub const fn fixed(w: u16, h: u16) -> Self {
+		Self { w: WidgetDim::Fixed(w), h: WidgetDim::Fixed(h) }
+	}
+
+	pub const fn hug() -> Self {
+		Self { w: WidgetDim::Hug, h: WidgetDim::Hug }
+	}
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(C, align(8))]
 pub struct WidgetPadding {
@@ -208,7 +223,7 @@ impl WidgetFlags {
 	pub const DRAW_TEXT:       Self = Self(1 << 2);
 	pub const DRAW_BORDER:     Self = Self(1 << 3);
 	pub const DRAW_BACKGROUND: Self = Self(1 << 4);
-	pub const DRAW_NINE_SLICE: Self = Self(1 << 5);
+	pub const DRAW_SPRITE: Self = Self(1 << 5);
 }
 
 impl WidgetFlags {
@@ -262,6 +277,12 @@ pub enum WidgetLayout {
 	},
 }
 
+#[derive(Debug, Clone)]
+pub enum WidgetSprite {
+	Simple(SpritesheetId, Sprite),
+	NineSlice(SpritesheetId, NineSlicingSprite),
+}
+
 /// Userland widget properties
 #[derive(Debug, Clone, Default)]
 pub struct WidgetProps {
@@ -269,16 +290,18 @@ pub struct WidgetProps {
 
 	// feature combinations
 	pub flags: WidgetFlags,
-	pub fg_color: Color,
-	pub bg_color: Color,
+	pub color: Color,
 	pub text: Option<Text>,
-	pub stroke_width: u16,
-	pub nss: Option<(SpritesheetId, NineSlicingSprite)>,
+	pub border_color: Color,
+	pub border_width: u16,
+	pub acf: Option<AlphaCompFn>,
+	pub sprite: Option<WidgetSprite>,
 
 	// declarative layout data
 	pub anchor: Anchor,
 	pub origin: Anchor,
-	pub offset: Pos,
+	pub pos: Pos,
+	pub draw_offset: Pos,
 	pub size: WidgetSize,
 	pub padding: WidgetPadding,
 	pub layout: WidgetLayout,
@@ -439,35 +462,48 @@ impl UiContext {
 				let widget = self.widget(w);
 				let props = &widget.props;
 
-				let mut solved_rect = widget.solved_rect;
-				solved_rect.x += widget.props.offset.x;
-				solved_rect.y += widget.props.offset.y;
+				let acf = props.acf.unwrap_or(alphacomp::over);
 
-				if props.flags.has(WidgetFlags::DRAW_NINE_SLICE) {
-					if let Some((sheet_id, nss)) = props.nss {
-						draw_cmds.push(DrawCommand::NineSlicingSprite {
-							rect: solved_rect,
-							sheet_id,
-							nss,
-							acf: alphacomp::over,
-						});
+				let mut solved_rect = widget.solved_rect;
+				solved_rect.x += widget.props.draw_offset.x;
+				solved_rect.y += widget.props.draw_offset.y;
+
+				if props.flags.has(WidgetFlags::DRAW_SPRITE) {
+					match props.sprite {
+						Some(WidgetSprite::Simple(sheet_id, sprite)) => {
+							draw_cmds.push(DrawCommand::Sprite {
+								pos: solved_rect.pos(),
+								sheet_id,
+								sprite,
+								acf,
+							});
+						}
+						Some(WidgetSprite::NineSlice(sheet_id, nss)) => {
+							draw_cmds.push(DrawCommand::NineSlicingSprite {
+								rect: solved_rect,
+								sheet_id,
+								nss,
+								acf,
+							});
+						}
+						None => {}
 					}
 				}
 
 				if props.flags.has(WidgetFlags::DRAW_BACKGROUND) {
 					draw_cmds.push(DrawCommand::Fill {
 						rect: solved_rect,
-						color: props.bg_color,
-						acf: alphacomp::over,
+						color: props.color,
+						acf,
 					});
 				}
 
 				if props.flags.has(WidgetFlags::DRAW_BORDER) {
 					draw_cmds.push(DrawCommand::Stroke {
 						rect: solved_rect,
-						color: props.bg_color,
+						color: props.border_color,
 						stroke_width: 1,
-						acf: alphacomp::over,
+						acf,
 					});
 				}
 
@@ -476,7 +512,8 @@ impl UiContext {
 						draw_cmds.push(DrawCommand::Text {
 							text: text.text().clone(),
 							pos: solved_rect.pos(),
-							acf: alphacomp::over,
+							color: props.color,
+							acf,
 						});
 					}
 				}

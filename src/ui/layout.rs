@@ -3,7 +3,7 @@ use crate::math::rect::Rect;
 use crate::math::size::size;
 use crate::math::LayoutRect;
 
-use super::{Anchor, FlexDirection, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetLayout};
+use super::{Anchor, FlexDirection, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetLayout, WidgetSprite};
 
 impl UiContext {
 	fn children_width_fills_count(&self, wid: WidgetId) -> usize {
@@ -142,10 +142,17 @@ impl UiContext {
 			}
 		}
 
-		widget.solved_min_size.w =
-			solved_min_width.saturating_add_signed(widget.props.padding.l + widget.props.padding.r);
-		widget.solved_min_size.h =
-			solved_min_height.saturating_add_signed(widget.props.padding.t + widget.props.padding.b);
+		// take sprite into account
+		if widget.props.flags.has(WidgetFlags::DRAW_SPRITE) {
+			if let Some(WidgetSprite::Simple(_, sprite)) = &widget.props.sprite {
+				solved_min_width = solved_min_width.max(sprite.w);
+				solved_min_height = solved_min_height.max(sprite.h);
+			}
+		}
+
+		let padding = widget.props.padding;
+		widget.solved_min_size.w = solved_min_width.saturating_add_signed(padding.l + padding.r);
+		widget.solved_min_size.h = solved_min_height.saturating_add_signed(padding.t + padding.b);
 	}
 
 	/// Solve a widget's rect, based on the parent's solved rect.
@@ -169,7 +176,7 @@ impl UiContext {
 
 			let parent_layout_rect = LayoutRect::new(parent_solved_rect, Anchor::TOP_LEFT);
 			let current_pos = parent_layout_rect.anchor_ceil(widget.props.anchor);
-			let current_rect = Rect::from_pos_size(current_pos, solved_size);
+			let current_rect = Rect::from_pos_size(current_pos + widget.props.pos, solved_size);
 
 			widget.solved_rect = LayoutRect::new(current_rect, widget.props.origin).to_rect();
 

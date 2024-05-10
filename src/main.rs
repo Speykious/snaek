@@ -1,11 +1,12 @@
+#![allow(clippy::too_many_arguments)]
+
 // TODO: remove this thing as soon as possible
 #![allow(unused)]
 
 use std::error::Error;
 use std::time::Duration;
 
-use self::math::pos::{pos, Pos};
-use self::math::rect::Rect;
+use self::math::pos::pos;
 use self::math::size::size;
 use self::render::bitmap::Bitmap;
 use self::render::color::{alphacomp, Color};
@@ -13,9 +14,11 @@ use image::{ImageFormat, ImageResult};
 use math::size::Size;
 use minifb::{Key, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
-use render::{DrawCommand, Renderer, SpritesheetId};
-use snake::SnaekSheet;
-use ui::{Anchor, FlexDirection, Mouse, UiContext, WidgetDim, WidgetLayout, WidgetPadding, WidgetProps, WidgetSize};
+use render::{DrawCommand, Renderer};
+use ui::{
+	Anchor, FlexDirection, Mouse, UiContext, WidgetDim, WidgetFlags, WidgetLayout, WidgetPadding, WidgetProps,
+	WidgetSize, WidgetSprite,
+};
 
 mod math;
 mod render;
@@ -35,13 +38,6 @@ fn main() {
 			eprintln!("-> {}", e);
 		}
 	}
-}
-
-#[derive(Debug, Clone)]
-struct Bounce {
-	pub color: Color,
-	pub rect: Rect,
-	pub dpos: Pos,
 }
 
 const IMG_ASCII_CHARS: &[u8] = include_bytes!("../assets/ascii-chars.png");
@@ -86,30 +82,9 @@ fn game() -> Result<(), Box<dyn Error>> {
 	let mut window = Window::new("Snaek", WIDTH as usize, HEIGHT as usize, options)?;
 	window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 60)));
 
-	let center = pos(WIDTH as i16 / 2, HEIGHT as i16 / 2);
-	let bounce_size = size(30, 20);
-
-	let mut bounces = [
-		Bounce {
-			color: Color::from_hex(0xff801234),
-			rect: Rect::from_pos_size(center + pos(-8, -10), bounce_size),
-			dpos: pos(-1, -1),
-		},
-		Bounce {
-			color: Color::from_hex(0x80128034),
-			rect: Rect::from_pos_size(center + pos(9, -13), bounce_size),
-			dpos: pos(1, -1),
-		},
-		Bounce {
-			color: Color::from_hex(0xff123480),
-			rect: Rect::from_pos_size(center + pos(11, 12), bounce_size),
-			dpos: pos(1, 1),
-		},
-	];
-
 	let mut draw_cmds = Vec::new();
 	let mut mouse = Mouse::default();
-	while window.is_open() {
+	'game_loop: while window.is_open() {
 		// input handling
 		if window.is_key_down(Key::Escape) {
 			break;
@@ -124,53 +99,102 @@ fn game() -> Result<(), Box<dyn Error>> {
 		mouse.r_pressed = (window.get_mouse_down(MouseButton::Right), mouse.r_pressed.0);
 		mouse.m_pressed = (window.get_mouse_down(MouseButton::Middle), mouse.m_pressed.0);
 
-		// state update
-		for bounce in &mut bounces {
-			if bounce.rect.x <= 0 {
-				bounce.dpos.x = 1;
-			} else if bounce.rect.x as i32 + bounce.rect.w as i32 + 1 > WIDTH as i32 {
-				bounce.dpos.x = -1;
-			}
-
-			if bounce.rect.y <= 0 {
-				bounce.dpos.y = 1;
-			} else if bounce.rect.y as i32 + bounce.rect.h as i32 + 1 > HEIGHT as i32 {
-				bounce.dpos.y = -1;
-			}
-
-			bounce.rect.x += bounce.dpos.x;
-			bounce.rect.y += bounce.dpos.y;
-		}
-
 		draw_cmds.clear();
-
 		draw_cmds.push(DrawCommand::Clear);
-		draw_cmds.push(DrawCommand::Fill {
-			rect: renderer.rect(),
-			color: Color::from_hex(0xff262b44),
-			acf: alphacomp::dst,
-		});
-
-		draw_cmds.push(DrawCommand::Stroke {
-			rect: renderer.rect(),
-			stroke_width: 1,
-			color: Color::from_hex(0xff181425),
-			acf: alphacomp::dst,
-		});
-
-		draw_rectangles_bouncing(&renderer, &bounces, snaek_sheet_id, &snaek_sheet, &mut draw_cmds);
 
 		// UI
+		let window_frame = ui.build_widget(WidgetProps {
+			key: wk!(),
+			flags: WidgetFlags::DRAW_BACKGROUND | WidgetFlags::DRAW_BORDER,
+			color: Color::from_hex(0xffc0cbdc),
+			border_color: Color::from_hex(0xff181425),
+			border_width: 1,
+			acf: Some(alphacomp::dst),
+			size: WidgetSize {
+				w: WidgetDim::Fill,
+				h: WidgetDim::Fill,
+			},
+			padding: WidgetPadding::all(1),
+			layout: WidgetLayout::Flex {
+				direction: FlexDirection::Vertical,
+				gap: 0,
+			},
+			..WidgetProps::default()
+		});
 		{
-			let frame = ui.build_widget(WidgetProps {
+			let navbar = ui.build_widget(WidgetProps {
 				key: wk!(),
+				size: WidgetSize {
+					w: WidgetDim::Fill,
+					h: WidgetDim::Fixed(8),
+				},
+				layout: WidgetLayout::Flex {
+					direction: FlexDirection::Horizontal,
+					gap: 0,
+				},
+				..WidgetProps::default()
+			});
+			{
+				let snaek_icon = ui.build_widget(WidgetProps {
+					key: wk!(),
+					flags: WidgetFlags::DRAW_SPRITE,
+					size: WidgetSize::fixed(8, 8),
+					sprite: Some(WidgetSprite::Simple(snaek_sheet_id, snaek_sheet.snaek_icon)),
+					draw_offset: pos(1, 1),
+					layout: WidgetLayout::Flex {
+						direction: FlexDirection::Horizontal,
+						gap: 0,
+					},
+					..WidgetProps::default()
+				});
+				ui.add_child(navbar.id(), snaek_icon.id());
+
+				let menu = ui.build_widget(WidgetProps {
+					key: wk!(),
+					size: WidgetSize::fill(),
+					..WidgetProps::default()
+				});
+				ui.add_child(navbar.id(), menu.id());
+
+				// // minifb cannot minimize the window so here we are...
+				//
+				// let btn_minimize = ui.btn_icon(
+				// 	wk!(),
+				// 	snaek_sheet_id,
+				// 	snaek_sheet.icon_minimize,
+				// 	WidgetSize::fixed(7, 7),
+				// 	Anchor::TOP_LEFT,
+				// 	Anchor::TOP_LEFT,
+				// 	Color::from_hex(0x40181425),
+				// );
+				// ui.add_child(navbar.id(), btn_minimize.id());
+
+				let btn_close = ui.btn_icon(
+					wk!(),
+					snaek_sheet_id,
+					snaek_sheet.icon_close,
+					WidgetSize::fixed(7, 7),
+					Anchor::TOP_LEFT,
+					Anchor::TOP_LEFT,
+					Color::from_hex(0xffe43b44),
+				);
+				ui.add_child(navbar.id(), btn_close.id());
+
+				if btn_close.clicked() {
+					break 'game_loop;
+				}
+			}
+			ui.add_child(window_frame.id(), navbar.id());
+
+			let game_frame = ui.build_widget(WidgetProps {
+				key: wk!(),
+				flags: WidgetFlags::DRAW_SPRITE,
+				sprite: Some(WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed)),
+				acf: Some(alphacomp::dst),
 				anchor: Anchor::CENTER,
 				origin: Anchor::CENTER,
-				size: WidgetSize {
-					w: WidgetDim::Fixed(30),
-					h: WidgetDim::Fill,
-				},
-				padding: WidgetPadding::all(2),
+				size: WidgetSize::fill(),
+				padding: WidgetPadding::all(3),
 				layout: WidgetLayout::Flex {
 					direction: FlexDirection::Vertical,
 					gap: 2,
@@ -178,56 +202,57 @@ fn game() -> Result<(), Box<dyn Error>> {
 				..WidgetProps::default()
 			});
 			{
-				let ewe_button = ui.button(
+				let ewe_button = ui.btn_box(
 					wk!(),
 					renderer.text("ewe"),
 					WidgetSize {
-						w: WidgetDim::Fill,
+						w: WidgetDim::Fixed(30),
 						h: WidgetDim::Fill,
 					},
-					(snaek_sheet_id, snaek_sheet.box_embossed),
-					(snaek_sheet_id, snaek_sheet.box_carved),
+					WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
+					WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
 				);
-				ui.add_child(frame.id(), ewe_button.id());
+				ui.add_child(game_frame.id(), ewe_button.id());
 
 				if ewe_button.clicked() {
 					println!("ewe");
 				}
 
-				for i in 0..3 {
-					let uwu_button = ui.button(
+				for i in 0..2 {
+					let uwu_button = ui.btn_box(
 						wk!(i),
 						renderer.text("UwU"),
 						WidgetSize {
-							w: WidgetDim::Fill,
-							h: WidgetDim::Fixed(9),
+							w: WidgetDim::Fixed(30),
+							h: WidgetDim::Hug,
 						},
-						(snaek_sheet_id, snaek_sheet.box_embossed),
-						(snaek_sheet_id, snaek_sheet.box_carved),
+						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
+						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
 					);
-					ui.add_child(frame.id(), uwu_button.id());
+					ui.add_child(game_frame.id(), uwu_button.id());
 
 					if uwu_button.clicked() {
 						println!("UwU ({})", i);
 					}
 
-					let owo_button = ui.button(
+					let owo_button = ui.btn_box(
 						wk!(i),
 						renderer.text("OwO"),
 						WidgetSize {
-							w: WidgetDim::Fill,
-							h: WidgetDim::Fixed(9),
+							w: WidgetDim::Fixed(30),
+							h: WidgetDim::Hug,
 						},
-						(snaek_sheet_id, snaek_sheet.box_embossed),
-						(snaek_sheet_id, snaek_sheet.box_carved),
+						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
+						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
 					);
-					ui.add_child(frame.id(), owo_button.id());
+					ui.add_child(game_frame.id(), owo_button.id());
 
 					if owo_button.clicked() {
 						println!("OwO ({})", i);
 					}
 				}
 			}
+			ui.add_child(window_frame.id(), game_frame.id());
 		}
 		ui.solve_layout();
 		ui.draw_widgets(&mut draw_cmds);
@@ -242,48 +267,4 @@ fn game() -> Result<(), Box<dyn Error>> {
 	}
 
 	Ok(())
-}
-
-fn draw_rectangles_bouncing(
-	renderer: &Renderer,
-	bounces: &[Bounce],
-	snaek_sheet_id: SpritesheetId,
-	snaek_sheet: &SnaekSheet,
-	draw_cmds: &mut Vec<DrawCommand>,
-) {
-	draw_cmds.push(DrawCommand::BeginComposite);
-	{
-		draw_cmds.push(DrawCommand::Fill {
-			rect: renderer.rect(),
-			color: Color::from_hex(0x10000000),
-			acf: alphacomp::over,
-		});
-
-		for bounce in bounces {
-			draw_cmds.push(DrawCommand::Fill {
-				rect: bounce.rect,
-				color: bounce.color,
-				acf: alphacomp::add,
-			});
-		}
-
-		draw_cmds.push(DrawCommand::BeginComposite);
-		{
-			draw_cmds.push(DrawCommand::Clear);
-			draw_cmds.push(DrawCommand::Sprite {
-				pos: Pos::ZERO,
-				sheet_id: snaek_sheet_id,
-				sprite: snaek_sheet.snaek_icon,
-				acf: alphacomp::over,
-			});
-
-			draw_cmds.push(DrawCommand::Text {
-				pos: pos(12, 12),
-				text: "Hello, world!".into(),
-				acf: alphacomp::over,
-			});
-		}
-		draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
-	}
-	draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
 }

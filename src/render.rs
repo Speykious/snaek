@@ -178,8 +178,11 @@ pub enum DrawCommand {
 	Text {
 		text: Arc<str>,
 		pos: Pos,
+		color: Color,
 		acf: AlphaCompFn,
 	},
+	MaskAnd(Color),
+	MaskOr(Color),
 	BeginComposite,
 	EndComposite(AlphaCompFn),
 }
@@ -191,10 +194,13 @@ fn draw(
 	ascii_sheet: &AsciiSheet,
 	ascii_bitmap: &Bitmap,
 ) {
+	let mut mask_and = Color::WHITE;
+	let mut mask_or = Color::TRANSPARENT;
+
 	let mut fb_id = 0;
 	for command in commands {
 		match *command {
-			DrawCommand::Clear => (fb_stack.fb_mut(fb_id)).fill(Color::ZERO, alphacomp::dst),
+			DrawCommand::Clear => (fb_stack.fb_mut(fb_id)).fill(Color::TRANSPARENT, alphacomp::dst),
 			DrawCommand::Fill { rect, color, acf } => (fb_stack.fb_mut(fb_id)).fill_area(color, rect, acf),
 			DrawCommand::Stroke {
 				rect,
@@ -435,16 +441,28 @@ fn draw(
 					);
 				}
 			}
-			DrawCommand::Text { pos, ref text, acf } => {
+			DrawCommand::Text {
+				pos,
+				ref text,
+				color,
+				acf,
+			} => {
 				let mut pos = pos;
 				let fb = fb_stack.fb_mut(fb_id);
 
 				for &c in text.as_bytes() {
 					let c_sprite = ascii_char_to_sprite(c, ascii_sheet);
 
+					// TODO: use color (replace color composition function with enum)
 					fb.copy_bitmap_area(ascii_bitmap, pos, c_sprite.pos(), c_sprite.size(), acf);
 					pos.x += c_sprite.w as i16 + 1;
 				}
+			}
+			DrawCommand::MaskAnd(color) => {
+				mask_and = color;
+			}
+			DrawCommand::MaskOr(color) => {
+				mask_or = color;
 			}
 			DrawCommand::BeginComposite => {
 				fb_id += 1;

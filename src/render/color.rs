@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(C, align(4))]
@@ -10,7 +10,9 @@ pub struct Color {
 }
 
 impl Color {
-	pub const ZERO: Self = Self::from_hex(0x00000000);
+	pub const TRANSPARENT: Self = Self::from_hex(0x00000000);
+	pub const BLACK: Self = Self::from_hex(0xff000000);
+	pub const WHITE: Self = Self::from_hex(0xffffffff);
 
 	#[inline]
 	pub const fn new(a: u8, r: u8, g: u8, b: u8) -> Self {
@@ -42,7 +44,7 @@ impl Color {
 }
 
 impl Add for Color {
-	type Output = Color;
+	type Output = Self;
 
 	fn add(mut self, rhs: Self) -> Self::Output {
 		self.a += rhs.a;
@@ -60,7 +62,7 @@ impl AddAssign for Color {
 }
 
 impl Sub for Color {
-	type Output = Color;
+	type Output = Self;
 
 	fn sub(mut self, rhs: Self) -> Self::Output {
 		self.a -= rhs.a;
@@ -78,7 +80,7 @@ impl SubAssign for Color {
 }
 
 impl Mul<u8> for Color {
-	type Output = Color;
+	type Output = Self;
 
 	fn mul(mut self, rhs: u8) -> Self::Output {
 		self.a *= rhs;
@@ -90,7 +92,7 @@ impl Mul<u8> for Color {
 }
 
 impl Mul<f32> for Color {
-	type Output = Color;
+	type Output = Self;
 
 	fn mul(mut self, rhs: f32) -> Self::Output {
 		self.a = (self.a as f32 * rhs) as u8;
@@ -108,7 +110,7 @@ impl MulAssign<u8> for Color {
 }
 
 impl Div<u8> for Color {
-	type Output = Color;
+	type Output = Self;
 
 	fn div(mut self, rhs: u8) -> Self::Output {
 		self.a /= rhs;
@@ -122,6 +124,60 @@ impl Div<u8> for Color {
 impl DivAssign<u8> for Color {
 	fn div_assign(&mut self, rhs: u8) {
 		*self = *self / rhs;
+	}
+}
+
+impl BitAnd for Color {
+	type Output = Self;
+
+	fn bitand(mut self, rhs: Self) -> Self::Output {
+		self.a &= rhs.a;
+		self.r &= rhs.r;
+		self.g &= rhs.g;
+		self.b &= rhs.b;
+		self
+	}
+}
+
+impl BitAndAssign for Color {
+	fn bitand_assign(&mut self, rhs: Self) {
+		*self = *self & rhs;
+	}
+}
+
+impl BitOr for Color {
+	type Output = Self;
+
+	fn bitor(mut self, rhs: Self) -> Self::Output {
+		self.a |= rhs.a;
+		self.r |= rhs.r;
+		self.g |= rhs.g;
+		self.b |= rhs.b;
+		self
+	}
+}
+
+impl BitOrAssign for Color {
+	fn bitor_assign(&mut self, rhs: Self) {
+		*self = *self | rhs;
+	}
+}
+
+impl BitXor for Color {
+	type Output = Self;
+
+	fn bitxor(mut self, rhs: Self) -> Self::Output {
+		self.a ^= rhs.a;
+		self.r ^= rhs.r;
+		self.g ^= rhs.g;
+		self.b ^= rhs.b;
+		self
+	}
+}
+
+impl BitXorAssign for Color {
+	fn bitxor_assign(&mut self, rhs: Self) {
+		*self = *self ^ rhs;
 	}
 }
 
@@ -150,6 +206,11 @@ pub mod alphacomp {
 			g: pixa.g.saturating_add(pixb.g),
 			b: pixa.b.saturating_add(pixb.b),
 		}
+	}
+
+	/// Computes `A xor B`.
+	pub fn xor(pixa: Color, pixb: Color) -> Color {
+		pixa ^ pixb
 	}
 
 	/// Computes A.
