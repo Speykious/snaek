@@ -7,8 +7,7 @@ use crate::ui::WidgetSprite;
 use crate::wk;
 
 use super::{
-	Anchor, FlexDirection, UiContext, Widget, WidgetDim, WidgetFlags, WidgetKey, WidgetLayout, WidgetPadding,
-	WidgetProps, WidgetReaction, WidgetSize,
+	Anchor, FlexDirection, UiContext, Widget, WidgetDim, WidgetFlags, WidgetId, WidgetKey, WidgetLayout, WidgetPadding, WidgetProps, WidgetReaction, WidgetSize
 };
 
 impl UiContext {
@@ -96,10 +95,13 @@ impl UiContext {
 	pub fn btn_box(
 		&mut self,
 		key: WidgetKey,
-		text: Text,
 		size: WidgetSize,
+		padding: WidgetPadding,
 		normal_nss: WidgetSprite,
 		hover_nss: WidgetSprite,
+		anchor: Anchor,
+		origin: Anchor,
+		child_id: WidgetId,
 	) -> WidgetReaction {
 		use WidgetFlags as Wf;
 
@@ -109,23 +111,22 @@ impl UiContext {
 			flags: Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::CAN_CLICK | Wf::DRAW_SPRITE,
 			sprite: Some(normal_nss),
 
-			anchor: Anchor::CENTER,
-			origin: Anchor::CENTER,
-			padding: WidgetPadding::all(2),
+			anchor,
+			origin,
+			padding,
 			size,
 
 			..WidgetProps::default()
 		});
 
-		let inner_text = self.text(wk!([key]), text, Anchor::CENTER, Anchor::CENTER);
-		self.add_child(button.id(), inner_text.id());
+		self.add_child(button.id(), child_id);
 
 		if button.pressed() && button.hovered() {
 			let mut w_btn = self.widget_mut(button.id());
 			w_btn.props.sprite = Some(hover_nss);
 			w_btn.props.draw_offset = pos(1, 1);
 
-			let mut w_txt = self.widget_mut(inner_text.id());
+			let mut w_txt = self.widget_mut(child_id);
 			w_txt.props.draw_offset = pos(1, 1);
 		}
 

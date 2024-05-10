@@ -205,8 +205,6 @@ fn game() -> Result<(), Box<dyn Error>> {
 				flags: WidgetFlags::DRAW_SPRITE,
 				sprite: Some(WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed)),
 				acf: Some(alphacomp::dst),
-				anchor: Anchor::TOP_LEFT,
-				origin: Anchor::TOP_LEFT,
 				size: WidgetSize::fill(),
 				padding: WidgetPadding::hv(4, 3),
 				layout: WidgetLayout::Flex {
@@ -216,15 +214,82 @@ fn game() -> Result<(), Box<dyn Error>> {
 				..WidgetProps::default()
 			});
 			{
-				let big_display = ui.big_3digits_display(
-					wk!(),
-					bananas_count,
-					snaek_sheet_id,
-					snaek_sheet.box_num_display,
-					snaek_sheet.bignum_placeholder,
-					&snaek_sheet.bignums,
-				);
-				ui.add_child(game_frame.id(), big_display.id());
+				let display_frame = ui.build_widget(WidgetProps {
+					key: wk!(),
+					size: WidgetSize {
+						w: WidgetDim::Fill,
+						h: WidgetDim::Hug,
+					},
+					layout: WidgetLayout::Flex {
+						direction: FlexDirection::Horizontal,
+						gap: 2,
+					},
+					..WidgetProps::default()
+				});
+				{
+					let big_display = ui.big_3digits_display(
+						wk!(),
+						bananas_count,
+						snaek_sheet_id,
+						snaek_sheet.box_num_display,
+						snaek_sheet.bignum_placeholder,
+						&snaek_sheet.bignums,
+					);
+					ui.add_child(display_frame.id(), big_display.id());
+
+					let middle_frame = ui.build_widget(WidgetProps {
+						key: wk!(),
+						size: WidgetSize::hug(),
+						layout: WidgetLayout::Flex {
+							direction: FlexDirection::Vertical,
+							gap: 2,
+						},
+						..WidgetProps::default()
+					});
+					{
+						let icon_restart = ui.sprite(
+							wk!(),
+							snaek_sheet_id,
+							snaek_sheet.icon_restart,
+							Anchor::CENTER,
+							Anchor::CENTER,
+							Some(alphacomp::xor),
+						);
+						let btn_restart = ui.btn_box(
+							wk!(),
+							WidgetSize::hug(),
+							WidgetPadding::hv(3, 2),
+							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
+							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
+							Anchor::TOP_LEFT,
+							Anchor::TOP_LEFT,
+							icon_restart.id(),
+						);
+						ui.add_child(middle_frame.id(), btn_restart.id());
+
+						let icon_playpause = ui.sprite(
+							wk!(),
+							snaek_sheet_id,
+							snaek_sheet.icon_pause,
+							Anchor::CENTER,
+							Anchor::CENTER,
+							Some(alphacomp::xor),
+						);
+						let btn_playpause = ui.btn_box(
+							wk!(),
+							WidgetSize::hug(),
+							WidgetPadding::hv(3, 2),
+							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
+							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
+							Anchor::TOP_LEFT,
+							Anchor::TOP_LEFT,
+							icon_playpause.id(),
+						);
+						ui.add_child(middle_frame.id(), btn_playpause.id());
+					}
+					ui.add_child(display_frame.id(), middle_frame.id());
+				}
+				ui.add_child(game_frame.id(), display_frame.id());
 			}
 			ui.add_child(window_frame.id(), game_frame.id());
 		}
