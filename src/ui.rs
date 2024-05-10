@@ -170,15 +170,24 @@ pub struct WidgetSize {
 
 impl WidgetSize {
 	pub const fn fill() -> Self {
-		Self { w: WidgetDim::Fill, h: WidgetDim::Fill }
+		Self {
+			w: WidgetDim::Fill,
+			h: WidgetDim::Fill,
+		}
 	}
 
 	pub const fn fixed(w: u16, h: u16) -> Self {
-		Self { w: WidgetDim::Fixed(w), h: WidgetDim::Fixed(h) }
+		Self {
+			w: WidgetDim::Fixed(w),
+			h: WidgetDim::Fixed(h),
+		}
 	}
 
 	pub const fn hug() -> Self {
-		Self { w: WidgetDim::Hug, h: WidgetDim::Hug }
+		Self {
+			w: WidgetDim::Hug,
+			h: WidgetDim::Hug,
+		}
 	}
 }
 
@@ -218,12 +227,14 @@ pub struct WidgetFlags(u32);
 #[rustfmt::skip]
 impl WidgetFlags {
 	pub const NONE:            Self = Self(0);
-	pub const CAN_FOCUS:       Self = Self(1 << 0);
-	pub const CAN_HOVER:       Self = Self(1 << 1);
-	pub const DRAW_TEXT:       Self = Self(1 << 2);
-	pub const DRAW_BORDER:     Self = Self(1 << 3);
-	pub const DRAW_BACKGROUND: Self = Self(1 << 4);
-	pub const DRAW_SPRITE: Self = Self(1 << 5);
+	pub const DISABLED:        Self = Self(1 << 0);
+	pub const CAN_FOCUS:       Self = Self(1 << 1);
+	pub const CAN_HOVER:       Self = Self(1 << 2);
+	pub const CAN_CLICK:       Self = Self(1 << 3);
+	pub const DRAW_TEXT:       Self = Self(1 << 4);
+	pub const DRAW_BORDER:     Self = Self(1 << 5);
+	pub const DRAW_BACKGROUND: Self = Self(1 << 6);
+	pub const DRAW_SPRITE:     Self = Self(1 << 7);
 }
 
 impl WidgetFlags {
@@ -541,27 +552,39 @@ impl UiContext {
 		draw_cmds.push(DrawCommand::EndComposite(alphacomp::over));
 	}
 
-	fn react_rec(&mut self, mouse: &Mouse, wid: WidgetId) {
-		let first_child = {
+	fn react_rec(&mut self, mouse: &Mouse, wid: WidgetId) -> bool {
+		{
 			let mut widget = self.widget_mut(wid);
+			if widget.props.flags.has(WidgetFlags::DISABLED) {
+				widget.hovered = false;
+				widget.pressed = false;
+				widget.clicked = false;
+				return false;
+			}
+		}
 
-			let pressed_prev = widget.pressed;
-
-			widget.hovered = widget.solved_rect.contains(mouse.x, mouse.y);
-			widget.pressed = match widget.hovered {
-				true => mouse.l_pressed_start() || (mouse.l_pressed() && pressed_prev),
-				false => mouse.l_pressed() && pressed_prev,
-			};
-			widget.clicked = widget.hovered && mouse.l_pressed_end() && pressed_prev;
-
-			widget.first_child
-		};
-
-		let mut child = first_child;
+		let mut any_child_hovered = false;
+		let mut child = self.widget(wid).first_child;
 		while let Some(ch) = child {
-			self.react_rec(mouse, ch);
+			any_child_hovered |= self.react_rec(mouse, ch);
 			child = self.widget(ch).next;
 		}
+
+		let mut widget = self.widget_mut(wid);
+		let can_hover = widget.props.flags.has(WidgetFlags::CAN_HOVER);
+		let can_click = widget.props.flags.has(WidgetFlags::CAN_CLICK);
+
+		let pressed_prev = widget.pressed;
+		let hovered = !any_child_hovered && widget.solved_rect.contains(mouse.x, mouse.y);
+
+		widget.hovered = can_hover && hovered;
+		widget.pressed = can_click && match hovered {
+			true => mouse.l_pressed_start() || (mouse.l_pressed() && pressed_prev),
+			false => mouse.l_pressed() && pressed_prev,
+		};
+		widget.clicked = can_click && hovered && mouse.l_pressed_end() && pressed_prev;
+
+		widget.hovered
 	}
 
 	pub fn react(&mut self, mouse: &Mouse) {

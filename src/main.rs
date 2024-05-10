@@ -1,5 +1,4 @@
 #![allow(clippy::too_many_arguments)]
-
 // TODO: remove this thing as soon as possible
 #![allow(unused)]
 
@@ -84,6 +83,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 	let mut draw_cmds = Vec::new();
 	let mut mouse = Mouse::default();
+	let mut unscaled_mouse_pos = None;
 	'game_loop: while window.is_open() {
 		// input handling
 		if window.is_key_down(Key::Escape) {
@@ -124,6 +124,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 		{
 			let navbar = ui.build_widget(WidgetProps {
 				key: wk!(),
+				flags: WidgetFlags::CAN_CLICK,
 				size: WidgetSize {
 					w: WidgetDim::Fill,
 					h: WidgetDim::Fixed(8),
@@ -185,6 +186,18 @@ fn game() -> Result<(), Box<dyn Error>> {
 				}
 			}
 			ui.add_child(window_frame.id(), navbar.id());
+
+			if navbar.pressed() {
+				let (cpx, cpy) = window.get_unscaled_mouse_pos(MouseMode::Pass).unwrap_or_default();
+				let (mpx, mpy) = unscaled_mouse_pos.unwrap_or((cpx, cpy));
+
+				let (wpx, wpy) = window.get_position();
+				window.set_position(wpx + (cpx - mpx).round() as isize, wpy + (cpy - mpy).round() as isize);
+
+				unscaled_mouse_pos = Some((mpx, mpy));
+			} else {
+				unscaled_mouse_pos = None;
+			}
 
 			let game_frame = ui.build_widget(WidgetProps {
 				key: wk!(),

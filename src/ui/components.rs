@@ -66,7 +66,7 @@ impl UiContext {
 		let button = self.build_widget(WidgetProps {
 			key,
 
-			flags: Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::DRAW_BACKGROUND,
+			flags: Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::CAN_CLICK | Wf::DRAW_BACKGROUND,
 
 			anchor,
 			origin,
@@ -106,7 +106,7 @@ impl UiContext {
 		let button = self.build_widget(WidgetProps {
 			key,
 
-			flags: Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::DRAW_SPRITE,
+			flags: Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::CAN_CLICK | Wf::DRAW_SPRITE,
 			sprite: Some(normal_nss),
 
 			anchor: Anchor::CENTER,
