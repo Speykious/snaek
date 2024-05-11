@@ -105,58 +105,34 @@ fn game() -> Result<(), Box<dyn Error>> {
 		draw_cmds.push(DrawCommand::Clear);
 
 		// UI
-		let window_frame = ui.build_widget(WidgetProps {
-			key: wk!(),
-			flags: WidgetFlags::DRAW_BACKGROUND | WidgetFlags::DRAW_BORDER,
-			color: Color::from_hex(0xffc0cbdc),
-			border_color: Color::from_hex(0xff181425),
-			border_width: 1,
-			acf: Some(alphacomp::dst),
-			size: WidgetSize {
-				w: WidgetDim::Fill,
-				h: WidgetDim::Fill,
-			},
-			padding: WidgetPadding::all(1),
-			layout: WidgetLayout::Flex {
-				direction: FlexDirection::Vertical,
-				gap: 0,
-			},
-			..WidgetProps::default()
-		});
+		let window_frame = ui.build_widget(
+			WidgetProps::new(wk!())
+				.with_flags(WidgetFlags::DRAW_BACKGROUND | WidgetFlags::DRAW_BORDER)
+				.with_color(Color::from_hex(0xffc0cbdc))
+				.with_border_color(Color::from_hex(0xff181425))
+				.with_border_width(1)
+				.with_acf(Some(alphacomp::dst))
+				.with_size(WidgetSize::fill())
+				.with_padding(WidgetPadding::all(1))
+				.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 0)),
+		);
 		{
-			let navbar = ui.build_widget(WidgetProps {
-				key: wk!(),
-				flags: WidgetFlags::CAN_CLICK,
-				size: WidgetSize {
-					w: WidgetDim::Fill,
-					h: WidgetDim::Fixed(8),
-				},
-				layout: WidgetLayout::Flex {
-					direction: FlexDirection::Horizontal,
-					gap: 0,
-				},
-				..WidgetProps::default()
-			});
+			let navbar = ui.build_widget(
+				WidgetProps::new(wk!())
+					.with_flags(WidgetFlags::CAN_CLICK)
+					.with_size(WidgetSize::new(WidgetDim::Fill, WidgetDim::Fixed(8)))
+					.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 0)),
+			);
 			{
-				let snaek_icon = ui.build_widget(WidgetProps {
-					key: wk!(),
-					flags: WidgetFlags::DRAW_SPRITE,
-					size: WidgetSize::fixed(8, 8),
-					sprite: Some(WidgetSprite::Simple(snaek_sheet_id, snaek_sheet.snaek_icon)),
-					draw_offset: pos(1, 1),
-					layout: WidgetLayout::Flex {
-						direction: FlexDirection::Horizontal,
-						gap: 0,
-					},
-					..WidgetProps::default()
-				});
+				let snaek_icon = ui.build_widget(
+					WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.snaek_icon)
+						.with_size(WidgetSize::fixed(8, 8))
+						.with_draw_offset(pos(1, 1))
+						.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 0)),
+				);
 				ui.add_child(navbar.id(), snaek_icon.id());
 
-				let menu = ui.build_widget(WidgetProps {
-					key: wk!(),
-					size: WidgetSize::fill(),
-					..WidgetProps::default()
-				});
+				let menu = ui.build_widget(WidgetProps::new(wk!()).with_size(WidgetSize::fill()));
 				ui.add_child(navbar.id(), menu.id());
 
 				// // minifb cannot minimize the window so here we are...
@@ -201,32 +177,19 @@ fn game() -> Result<(), Box<dyn Error>> {
 				unscaled_mouse_pos = None;
 			}
 
-			let game_frame = ui.build_widget(WidgetProps {
-				key: wk!(),
-				flags: WidgetFlags::DRAW_SPRITE,
-				sprite: Some(WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed)),
-				acf: Some(alphacomp::dst),
-				size: WidgetSize::fill(),
-				padding: WidgetPadding::hv(5, 4),
-				layout: WidgetLayout::Flex {
-					direction: FlexDirection::Vertical,
-					gap: 2,
-				},
-				..WidgetProps::default()
-			});
+			let game_frame = ui.build_widget(
+				WidgetProps::nine_slice_sprite(wk!(), snaek_sheet_id, snaek_sheet.box_embossed)
+					.with_acf(Some(alphacomp::dst))
+					.with_size(WidgetSize::fill())
+					.with_padding(WidgetPadding::hv(5, 4))
+					.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
+			);
 			{
-				let display_frame = ui.build_widget(WidgetProps {
-					key: wk!(),
-					size: WidgetSize {
-						w: WidgetDim::Fill,
-						h: WidgetDim::Hug,
-					},
-					layout: WidgetLayout::Flex {
-						direction: FlexDirection::Horizontal,
-						gap: 3,
-					},
-					..WidgetProps::default()
-				});
+				let display_frame = ui.build_widget(
+					WidgetProps::new(wk!())
+						.with_size(WidgetSize::new(WidgetDim::Fill, WidgetDim::Hug))
+						.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 3)),
+				);
 				{
 					let big_display = ui.big_3digits_display(
 						wk!(),
@@ -238,23 +201,16 @@ fn game() -> Result<(), Box<dyn Error>> {
 					);
 					ui.add_child(display_frame.id(), big_display.id());
 
-					let middle_frame = ui.build_widget(WidgetProps {
-						key: wk!(),
-						size: WidgetSize::hug(),
-						layout: WidgetLayout::Flex {
-							direction: FlexDirection::Vertical,
-							gap: 2,
-						},
-						..WidgetProps::default()
-					});
+					let middle_frame = ui.build_widget(
+						WidgetProps::new(wk!())
+							.with_size(WidgetSize::hug())
+							.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
+					);
 					{
-						let icon_restart = ui.sprite(
-							wk!(),
-							snaek_sheet_id,
-							snaek_sheet.icon_restart,
-							Anchor::CENTER,
-							Anchor::CENTER,
-							Some(alphacomp::xor),
+						let icon_restart = ui.build_widget(
+							WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.icon_restart)
+								.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
+								.with_acf(Some(alphacomp::xor)),
 						);
 						let btn_restart = ui.btn_box(
 							wk!(),
@@ -268,13 +224,10 @@ fn game() -> Result<(), Box<dyn Error>> {
 						);
 						ui.add_child(middle_frame.id(), btn_restart.id());
 
-						let icon_playpause = ui.sprite(
-							wk!(),
-							snaek_sheet_id,
-							snaek_sheet.icon_pause,
-							Anchor::CENTER,
-							Anchor::CENTER,
-							Some(alphacomp::xor),
+						let icon_playpause = ui.build_widget(
+							WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.icon_pause)
+								.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
+								.with_acf(Some(alphacomp::xor)),
 						);
 						let btn_playpause = ui.btn_box(
 							wk!(),
@@ -290,21 +243,13 @@ fn game() -> Result<(), Box<dyn Error>> {
 					}
 					ui.add_child(display_frame.id(), middle_frame.id());
 
-					let right_frame = ui.build_widget(WidgetProps {
-						key: wk!(),
-						size: WidgetSize::fill(),
-						layout: WidgetLayout::Flex {
-							direction: FlexDirection::Vertical,
-							gap: 2,
-						},
-						..WidgetProps::default()
-					});
+					let right_frame = ui.build_widget(
+						WidgetProps::new(wk!())
+							.with_size(WidgetSize::fill())
+							.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
+					);
 					{
-						let filler = ui.build_widget(WidgetProps {
-							key: wk!(),
-							size: WidgetSize::fill(),
-							..WidgetProps::default()
-						});
+						let filler = ui.build_widget(WidgetProps::new(wk!()).with_size(WidgetSize::fill()));
 						ui.add_child(right_frame.id(), filler.id());
 
 						let time_display = ui.time_display(

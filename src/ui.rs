@@ -169,6 +169,10 @@ pub struct WidgetSize {
 }
 
 impl WidgetSize {
+	pub const fn new(w: WidgetDim, h: WidgetDim) -> Self {
+		Self { w, h }
+	}
+
 	pub const fn fill() -> Self {
 		Self {
 			w: WidgetDim::Fill,
@@ -288,6 +292,13 @@ pub enum WidgetLayout {
 	},
 }
 
+impl WidgetLayout {
+	#[inline]
+	pub fn flex(direction: FlexDirection, gap: i16) -> Self {
+		Self::Flex { direction, gap }
+	}
+}
+
 #[derive(Debug, Clone)]
 pub enum WidgetSprite {
 	Simple(SpritesheetId, Sprite),
@@ -316,6 +327,104 @@ pub struct WidgetProps {
 	pub size: WidgetSize,
 	pub padding: WidgetPadding,
 	pub layout: WidgetLayout,
+}
+
+impl WidgetProps {
+	#[inline]
+	pub fn new(key: WidgetKey) -> Self {
+		Self { key, ..Self::default() }
+	}
+
+	#[inline]
+	pub const fn with_flags(mut self, flags: WidgetFlags) -> Self {
+		self.flags = flags;
+		self
+	}
+
+	#[inline]
+	pub const fn with_color(mut self, color: Color) -> Self {
+		self.color = color;
+		self
+	}
+
+	#[inline]
+	pub fn with_text(mut self, text: Option<Text>) -> Self {
+		self.text = text;
+		self
+	}
+
+	#[inline]
+	pub const fn with_border_color(mut self, border_color: Color) -> Self {
+		self.border_color = border_color;
+		self
+	}
+
+	#[inline]
+	pub const fn with_border_width(mut self, border_width: u16) -> Self {
+		self.border_width = border_width;
+		self
+	}
+
+	#[inline]
+	pub const fn with_acf(mut self, acf: Option<AlphaCompFn>) -> Self {
+		self.acf = acf;
+		self
+	}
+
+	#[inline]
+	pub const fn with_sprite(mut self, sprite: Option<WidgetSprite>) -> Self {
+		self.sprite = sprite;
+		self
+	}
+
+	#[inline]
+	pub const fn with_anchor(mut self, anchor: Anchor) -> Self {
+		self.anchor = anchor;
+		self
+	}
+
+	#[inline]
+	pub const fn with_origin(mut self, origin: Anchor) -> Self {
+		self.origin = origin;
+		self
+	}
+
+	#[inline]
+	pub const fn with_anchor_origin(mut self, anchor: Anchor, origin: Anchor) -> Self {
+		self.anchor = anchor;
+		self.origin = origin;
+		self
+	}
+
+	#[inline]
+	pub const fn with_pos(mut self, pos: Pos) -> Self {
+		self.pos = pos;
+		self
+	}
+
+	#[inline]
+	pub const fn with_draw_offset(mut self, draw_offset: Pos) -> Self {
+		self.draw_offset = draw_offset;
+		self
+	}
+
+	#[inline]
+	pub const fn with_size(mut self, size: WidgetSize) -> Self {
+		self.size = size;
+		self
+	}
+
+	#[inline]
+	pub const fn with_padding(mut self, padding: WidgetPadding) -> Self {
+		self.padding = padding;
+		self
+	}
+
+	#[inline]
+	pub const fn with_layout(mut self, layout: WidgetLayout) -> Self {
+		self.layout = layout;
+		self
+	}
 }
 
 #[derive(Default)]
@@ -578,10 +687,11 @@ impl UiContext {
 		let hovered = !any_child_hovered && widget.solved_rect.contains(mouse.x, mouse.y);
 
 		widget.hovered = can_hover && hovered;
-		widget.pressed = can_click && match hovered {
-			true => mouse.l_pressed_start() || (mouse.l_pressed() && pressed_prev),
-			false => mouse.l_pressed() && pressed_prev,
-		};
+		widget.pressed = can_click
+			&& match hovered {
+				true => mouse.l_pressed_start() || (mouse.l_pressed() && pressed_prev),
+				false => mouse.l_pressed() && pressed_prev,
+			};
 		widget.clicked = can_click && hovered && mouse.l_pressed_end() && pressed_prev;
 
 		widget.hovered
