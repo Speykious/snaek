@@ -80,7 +80,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 	};
 
 	let mut window = Window::new("Snaek", WIDTH as usize, HEIGHT as usize, options)?;
-	window.limit_update_rate(Some(Duration::from_micros(1_000_000 / 300)));
+	window.set_target_fps(60);
 
 	let start = Instant::now();
 	let mut bananas_count = 23;
