@@ -12,7 +12,7 @@ use image::{ImageFormat, ImageResult};
 use math::size::Size;
 use minifb::{CursorStyle, Key, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
-use render::{DrawCommand, Renderer};
+use render::{DrawCommand, Renderer, Text};
 use ui::{
 	Anchor, FlexDirection, Mouse, UiContext, WidgetDim, WidgetFlags, WidgetLayout, WidgetPadding, WidgetProps,
 	WidgetSize, WidgetSprite,
@@ -135,26 +135,10 @@ fn game() -> Result<(), Box<dyn Error>> {
 				let menu = ui.build_widget(WidgetProps::new(wk!()).with_size(WidgetSize::fill()));
 				ui.add_child(navbar.id(), menu.id());
 
-				// // minifb cannot minimize the window so here we are...
-				//
-				// let btn_minimize = ui.btn_icon(
-				// 	wk!(),
-				// 	snaek_sheet_id,
-				// 	snaek_sheet.icon_minimize,
-				// 	WidgetSize::fixed(7, 7),
-				// 	Anchor::TOP_LEFT,
-				// 	Anchor::TOP_LEFT,
-				// 	Color::from_hex(0x40181425),
-				// );
-				// ui.add_child(navbar.id(), btn_minimize.id());
-
 				let btn_close = ui.btn_icon(
-					wk!(),
+					WidgetProps::new(wk!()).with_size(WidgetSize::fixed(7, 7)),
 					snaek_sheet_id,
 					snaek_sheet.icon_close,
-					WidgetSize::fixed(7, 7),
-					Anchor::TOP_LEFT,
-					Anchor::TOP_LEFT,
 					Color::from_hex(0xffe43b44),
 				);
 				ui.add_child(navbar.id(), btn_close.id());
@@ -181,7 +165,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 				WidgetProps::nine_slice_sprite(wk!(), snaek_sheet_id, snaek_sheet.box_embossed)
 					.with_acf(Some(alphacomp::dst))
 					.with_size(WidgetSize::fill())
-					.with_padding(WidgetPadding::hv(5, 4))
+					.with_padding(WidgetPadding::trbl(4, 5, 5, 5))
 					.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
 			);
 			{
@@ -213,13 +197,11 @@ fn game() -> Result<(), Box<dyn Error>> {
 								.with_acf(Some(alphacomp::xor)),
 						);
 						let btn_restart = ui.btn_box(
-							wk!(),
-							WidgetSize::hug(),
-							WidgetPadding::hv(3, 2),
+							WidgetProps::new(wk!())
+								.with_size(WidgetSize::hug())
+								.with_padding(WidgetPadding::hv(3, 2)),
 							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
 							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
-							Anchor::TOP_LEFT,
-							Anchor::TOP_LEFT,
 							icon_restart.id(),
 						);
 						ui.add_child(middle_frame.id(), btn_restart.id());
@@ -230,13 +212,11 @@ fn game() -> Result<(), Box<dyn Error>> {
 								.with_acf(Some(alphacomp::xor)),
 						);
 						let btn_playpause = ui.btn_box(
-							wk!(),
-							WidgetSize::hug(),
-							WidgetPadding::hv(3, 2),
+							WidgetProps::new(wk!())
+								.with_size(WidgetSize::hug())
+								.with_padding(WidgetPadding::hv(3, 2)),
 							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
 							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
-							Anchor::TOP_LEFT,
-							Anchor::TOP_LEFT,
 							icon_playpause.id(),
 						);
 						ui.add_child(middle_frame.id(), btn_playpause.id());
@@ -249,8 +229,19 @@ fn game() -> Result<(), Box<dyn Error>> {
 							.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
 					);
 					{
-						let filler = ui.build_widget(WidgetProps::new(wk!()).with_size(WidgetSize::fill()));
-						ui.add_child(right_frame.id(), filler.id());
+						let text_holder = ui.build_widget(
+							WidgetProps::new(wk!())
+								.with_size(WidgetSize::fill())
+								.with_padding(WidgetPadding::hv(1, 0)),
+						);
+						{
+							let text = ui.build_widget(
+								WidgetProps::text(wk!(), renderer.text("Speykious"))
+									.with_anchor_origin(Anchor::BOTTOM_RIGHT, Anchor::BOTTOM_RIGHT),
+							);
+							ui.add_child(text_holder.id(), text.id());
+						}
+						ui.add_child(right_frame.id(), text_holder.id());
 
 						let time_display = ui.time_display(
 							wk!(),

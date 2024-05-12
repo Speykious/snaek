@@ -54,21 +54,18 @@ impl WidgetProps {
 impl UiContext {
 	pub fn btn_icon(
 		&mut self,
-		key: WidgetKey,
+		props: WidgetProps,
 		sheet_id: SpritesheetId,
 		sprite: Sprite,
-		size: WidgetSize,
-		anchor: Anchor,
-		origin: Anchor,
 		hover_color: Color,
 	) -> WidgetReaction {
 		use WidgetFlags as Wf;
 
+		let key = props.key;
+		let prev_flags = props.flags;
+
 		let button = self.build_widget(
-			WidgetProps::new(key)
-				.with_flags(Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::CAN_CLICK | Wf::DRAW_BACKGROUND)
-				.with_anchor_origin(anchor, origin)
-				.with_size(size),
+			props.with_flags(prev_flags | Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::CAN_CLICK | Wf::DRAW_BACKGROUND),
 		);
 
 		let inner_sprite = self.build_widget(
@@ -88,24 +85,17 @@ impl UiContext {
 
 	pub fn btn_box(
 		&mut self,
-		key: WidgetKey,
-		size: WidgetSize,
-		padding: WidgetPadding,
+		props: WidgetProps,
 		normal_nss: WidgetSprite,
 		hover_nss: WidgetSprite,
-		anchor: Anchor,
-		origin: Anchor,
 		child_id: WidgetId,
 	) -> WidgetReaction {
 		use WidgetFlags as Wf;
 
 		let button = self.build_widget(
-			WidgetProps::new(key)
+			props
 				.with_flags(Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::CAN_CLICK | Wf::DRAW_SPRITE)
-				.with_sprite(Some(normal_nss))
-				.with_anchor_origin(anchor, origin)
-				.with_padding(padding)
-				.with_size(size),
+				.with_sprite(Some(normal_nss)),
 		);
 
 		self.add_child(button.id(), child_id);
