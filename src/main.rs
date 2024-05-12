@@ -256,6 +256,21 @@ fn game() -> Result<(), Box<dyn Error>> {
 					ui.add_child(display_frame.id(), right_frame.id());
 				}
 				ui.add_child(game_frame.id(), display_frame.id());
+
+				let playfield = ui.build_widget(
+					WidgetProps::nine_slice_sprite(wk!(), snaek_sheet_id, snaek_sheet.box_playfield)
+						.with_size(WidgetSize::fill())
+						.with_padding(WidgetPadding::all(4)),
+				);
+				{
+					let playfield_bg = ui.build_widget(
+						WidgetProps::new(wk!())
+							.with_flags(WidgetFlags::DRAW_BACKGROUND)
+							.with_color(Color::from_hex(0xff262b44)),
+					);
+					ui.add_child(playfield.id(), playfield_bg.id());
+				}
+				ui.add_child(game_frame.id(), playfield.id());
 			}
 			ui.add_child(window_frame.id(), game_frame.id());
 		}
