@@ -194,7 +194,7 @@ impl UiContext {
 			WidgetLayout::Stacked => {
 				let mut child_id = self.widget(wid).first_child;
 				while let Some(child) = child_id {
-					self.solve_rects_rec(child, current_solved_rect);
+					self.solve_rects_rec(child, inner_solved_rect);
 					child_id = self.widget(child).next;
 				}
 			}
