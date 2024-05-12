@@ -231,15 +231,11 @@ fn game() -> Result<(), Box<dyn Error>> {
 							.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
 					);
 					{
-						let text_holder = ui.build_widget(
-							WidgetProps::new(wk!())
-								.with_size(WidgetSize::fill())
-								.with_padding(WidgetPadding::hv(1, 0)),
-						);
+						let text_holder = ui.build_widget(WidgetProps::new(wk!()).with_size(WidgetSize::fill()));
 						{
 							let text = ui.build_widget(
 								WidgetProps::text(wk!(), renderer.text("Speykious"))
-									.with_anchor_origin(Anchor::BOTTOM_RIGHT, Anchor::BOTTOM_RIGHT)
+									.with_anchor_origin(Anchor::BOTTOM_LEFT, Anchor::BOTTOM_LEFT)
 									.with_mask_and(Some(SNAEK_BLACK)),
 							);
 							ui.add_child(text_holder.id(), text.id());
