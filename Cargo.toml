@@ -7,6 +7,7 @@ edition = "2021"
 image = { version = "0.25.1", default-features = false, features = ["png"] }
 minifb = "0.26.0"
 owo-colors = "4.0.0"
+rand = "0.8.5"
 
 # Make target file smaller by not generating debug symbols
 [profile.dev.package."*"]

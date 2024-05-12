@@ -4,18 +4,21 @@
 use std::error::Error;
 use std::time::{Duration, Instant};
 
+use crate::snake::Direction;
+
 use self::math::pos::pos;
 use self::math::size::size;
 use self::render::bitmap::Bitmap;
 use self::render::color::{alphacomp, Color};
 use image::{ImageFormat, ImageResult};
 use math::size::Size;
-use minifb::{CursorStyle, Key, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
+use minifb::{CursorStyle, Key, KeyRepeat, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
-use render::{DrawCommand, Renderer, Text};
+use render::{DrawCommand, Renderer, SpritesheetId, Text};
+use snake::{SnaekSheet, SnakeGame};
 use ui::{
-	Anchor, FlexDirection, Mouse, UiContext, WidgetDim, WidgetFlags, WidgetLayout, WidgetPadding, WidgetProps,
-	WidgetSize, WidgetSprite,
+	Anchor, FlexDirection, Mouse, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetLayout, WidgetPadding,
+	WidgetProps, WidgetSize, WidgetSprite,
 };
 
 mod math;
@@ -82,12 +85,17 @@ fn game() -> Result<(), Box<dyn Error>> {
 	let mut window = Window::new("Snaek", WIDTH as usize, HEIGHT as usize, options)?;
 	window.set_target_fps(60);
 
+	let mut snake_game = SnakeGame::new(size(11, 11));
+	let mut next_direction = snake_game.direction();
+
 	let start = Instant::now();
-	let mut bananas_count = 23;
 
 	let mut draw_cmds = Vec::new();
 	let mut mouse = Mouse::default();
 	let mut unscaled_mouse_pos = None;
+
+	let mut frame_count: u64 = 0;
+
 	'game_loop: while window.is_open() {
 		// input handling
 		if window.is_key_down(Key::Escape) {
@@ -102,6 +110,17 @@ fn game() -> Result<(), Box<dyn Error>> {
 		mouse.l_pressed = (window.get_mouse_down(MouseButton::Left), mouse.l_pressed.0);
 		mouse.r_pressed = (window.get_mouse_down(MouseButton::Right), mouse.r_pressed.0);
 		mouse.m_pressed = (window.get_mouse_down(MouseButton::Middle), mouse.m_pressed.0);
+
+		// snake input
+		if window.is_key_pressed(Key::Up, KeyRepeat::No) || window.is_key_pressed(Key::W, KeyRepeat::No) {
+			next_direction = Direction::Up;
+		} else if window.is_key_pressed(Key::Right, KeyRepeat::No) || window.is_key_pressed(Key::D, KeyRepeat::No) {
+			next_direction = Direction::Right;
+		} else if window.is_key_pressed(Key::Down, KeyRepeat::No) || window.is_key_pressed(Key::S, KeyRepeat::No) {
+			next_direction = Direction::Down;
+		} else if window.is_key_pressed(Key::Left, KeyRepeat::No) || window.is_key_pressed(Key::A, KeyRepeat::No) {
+			next_direction = Direction::Left;
+		}
 
 		draw_cmds.clear();
 		draw_cmds.push(DrawCommand::Clear);
@@ -179,7 +198,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 				{
 					let big_display = ui.big_3digits_display(
 						wk!(),
-						bananas_count,
+						snake_game.bananas_eaten() as usize,
 						snaek_sheet_id,
 						snaek_sheet.box_num_display,
 						snaek_sheet.bignum_placeholder,
@@ -207,6 +226,11 @@ fn game() -> Result<(), Box<dyn Error>> {
 							icon_restart.id(),
 						);
 						ui.add_child(middle_frame.id(), btn_restart.id());
+
+						if btn_restart.clicked() {
+							snake_game.restart();
+							next_direction = snake_game.direction();
+						}
 
 						let icon_playpause = ui.build_widget(
 							WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.icon_pause)
@@ -262,12 +286,15 @@ fn game() -> Result<(), Box<dyn Error>> {
 						.with_padding(WidgetPadding::all(4)),
 				);
 				{
-					let playfield_bg = ui.build_widget(
+					let snake_container = ui.build_widget(
 						WidgetProps::new(wk!())
 							.with_flags(WidgetFlags::DRAW_BACKGROUND)
 							.with_color(Color::from_hex(0xff262b44)),
 					);
-					ui.add_child(playfield.id(), playfield_bg.id());
+					{
+						draw_snake_game(&snake_game, &mut ui, snake_container.id(), snaek_sheet_id, &snaek_sheet);
+					}
+					ui.add_child(playfield.id(), snake_container.id());
 				}
 				ui.add_child(game_frame.id(), playfield.id());
 			}
@@ -278,12 +305,72 @@ fn game() -> Result<(), Box<dyn Error>> {
 		ui.free_untouched_widgets();
 		ui.react(&mouse);
 
+		if frame_count % (60 / 3) == 0 {
+			snake_game.change_direction(next_direction);
+			snake_game.update();
+			next_direction = snake_game.direction();
+		}
+
 		renderer.draw(&draw_cmds);
 
 		window
 			.update_with_buffer(renderer.first_framebuffer().pixels(), WIDTH as usize, HEIGHT as usize)
 			.unwrap();
+
+		frame_count += 1;
 	}
 
 	Ok(())
+}
+
+fn draw_snake_game(
+	snake_game: &SnakeGame,
+	ui: &mut UiContext,
+	container_id: WidgetId,
+	snaek_sheet_id: SpritesheetId,
+	snaek_sheet: &SnaekSheet,
+) {
+	let banana_pos = snake_game.curr_banana_pos();
+
+	let banana_holder = ui.build_widget(
+		WidgetProps::new(wk!())
+			.with_size(WidgetSize::fixed(7, 7))
+			.with_pos(banana_pos * 7),
+	);
+	{
+		let sprite = ui.build_widget(
+			WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.banana_yellow)
+				.with_anchor_origin(Anchor::CENTER, Anchor::CENTER),
+		);
+		ui.add_child(banana_holder.id(), sprite.id());
+	}
+	ui.add_child(container_id, banana_holder.id());
+
+	let snake_len = snake_game.snake_len();
+	for (i, part_pos) in snake_game.snake_iter().enumerate() {
+		let (ikey_x, ikey_y) = (part_pos.x as u64, part_pos.y as u64);
+
+		let sprite_holder = ui.build_widget(
+			WidgetProps::new(wk!(ikey_x, ikey_y))
+				.with_size(WidgetSize::fixed(7, 7))
+				.with_pos(part_pos * 7),
+		);
+		{
+			let sprite = if i == 0 {
+				snaek_sheet.snake_head
+			} else if i == snake_len - 1 {
+				snaek_sheet.snake_end
+			} else {
+				snaek_sheet.snake_straight
+			};
+
+			let sprite = ui.build_widget(
+				WidgetProps::simple_sprite(wk!(ikey_x, ikey_y), snaek_sheet_id, sprite)
+					.with_anchor_origin(Anchor::CENTER, Anchor::CENTER),
+			);
+			// TODO: rotate sprite, use correct snake sprites
+			ui.add_child(sprite_holder.id(), sprite.id());
+		}
+		ui.add_child(container_id, sprite_holder.id());
+	}
 }
