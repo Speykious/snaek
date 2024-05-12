@@ -246,7 +246,15 @@ fn draw(
 					continue;
 				};
 
-				(fb_stack.fb_mut(fb_id)).copy_bitmap_area(bitmap, pos, sprite.rect.pos(), sprite.rect.size(), acf);
+				(fb_stack.fb_mut(fb_id)).copy_bitmap_area(
+					bitmap,
+					pos,
+					sprite.rect.pos(),
+					sprite.rect.size(),
+					acf,
+					mask_and,
+					mask_or,
+				);
 			}
 			DrawCommand::NineSlicingSprite {
 				rect,
@@ -272,7 +280,8 @@ fn draw(
 
 					let nssp_pos = nssp.rect.pos();
 					let nssp_size = nssp.rect.size();
-					(fb_stack.fb_mut(fb_id)).copy_bitmap_area(bitmap, fb_pos, nssp_pos, nssp_size, acf);
+					(fb_stack.fb_mut(fb_id))
+						.copy_bitmap_area(bitmap, fb_pos, nssp_pos, nssp_size, acf, mask_and, mask_or);
 				}
 
 				'top_center: {
@@ -291,6 +300,8 @@ fn draw(
 							nssp_pos,
 							size(nssp_size.w.min((rect.w - nssp.rect.w) - x), nssp_size.h),
 							acf,
+							mask_and,
+							mask_or,
 						);
 						x += nssp.rect.w;
 					}
@@ -310,6 +321,8 @@ fn draw(
 						nssp_pos,
 						nssp_size,
 						acf,
+						mask_and,
+						mask_or,
 					);
 				}
 
@@ -329,6 +342,8 @@ fn draw(
 							nssp_pos,
 							size(nssp_size.w, nssp_size.h.min((rect.h - nssp.rect.h) - y)),
 							acf,
+							mask_and,
+							mask_or,
 						);
 						y += nssp.rect.h;
 					}
@@ -355,6 +370,8 @@ fn draw(
 									nssp_size.h.min((rect.h - nssp.rect.h) - y),
 								),
 								acf,
+								mask_and,
+								mask_or,
 							);
 							x += nssp.rect.w;
 						}
@@ -378,6 +395,8 @@ fn draw(
 							nssp_pos,
 							size(nssp_size.w, nssp_size.h.min((rect.h - nssp.rect.h) - y)),
 							acf,
+							mask_and,
+							mask_or,
 						);
 						y += nssp.rect.h;
 					}
@@ -397,6 +416,8 @@ fn draw(
 						nssp_pos,
 						nssp_size,
 						acf,
+						mask_and,
+						mask_or,
 					);
 				}
 
@@ -416,6 +437,8 @@ fn draw(
 							nssp_pos,
 							size(nssp_size.w.min((rect.w - nssp.rect.w) - x), nssp_size.h),
 							acf,
+							mask_and,
+							mask_or,
 						);
 						x += nssp.rect.w;
 					}
@@ -438,6 +461,8 @@ fn draw(
 						nssp_pos,
 						nssp_size,
 						acf,
+						mask_and,
+						mask_or,
 					);
 				}
 			}
@@ -453,8 +478,15 @@ fn draw(
 				for &c in text.as_bytes() {
 					let c_sprite = ascii_char_to_sprite(c, ascii_sheet);
 
-					// TODO: use color (replace color composition function with enum)
-					fb.copy_bitmap_area(ascii_bitmap, pos, c_sprite.pos(), c_sprite.size(), acf);
+					fb.copy_bitmap_area(
+						ascii_bitmap,
+						pos,
+						c_sprite.pos(),
+						c_sprite.size(),
+						acf,
+						mask_and,
+						mask_or,
+					);
 					pos.x += c_sprite.w as i16 + 1;
 				}
 			}

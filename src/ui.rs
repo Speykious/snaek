@@ -316,6 +316,8 @@ pub struct WidgetProps {
 	pub text: Option<Text>,
 	pub border_color: Color,
 	pub border_width: u16,
+	pub mask_and: Option<Color>,
+	pub mask_or: Option<Color>,
 	pub acf: Option<AlphaCompFn>,
 	pub sprite: Option<WidgetSprite>,
 
@@ -362,6 +364,18 @@ impl WidgetProps {
 	#[inline]
 	pub const fn with_border_width(mut self, border_width: u16) -> Self {
 		self.border_width = border_width;
+		self
+	}
+
+	#[inline]
+	pub const fn with_mask_and(mut self, mask_and: Option<Color>) -> Self {
+		self.mask_and = mask_and;
+		self
+	}
+
+	#[inline]
+	pub const fn with_mask_or(mut self, mask_or: Option<Color>) -> Self {
+		self.mask_or = mask_or;
 		self
 	}
 
@@ -588,6 +602,14 @@ impl UiContext {
 				solved_rect.x += widget.props.draw_offset.x;
 				solved_rect.y += widget.props.draw_offset.y;
 
+				if let Some(mask_and) = props.mask_and {
+					draw_cmds.push(DrawCommand::MaskAnd(mask_and));
+				}
+
+				if let Some(mask_or) = props.mask_or {
+					draw_cmds.push(DrawCommand::MaskOr(mask_or));
+				}
+
 				if props.flags.has(WidgetFlags::DRAW_SPRITE) {
 					match props.sprite {
 						Some(WidgetSprite::Simple(sheet_id, sprite)) => {
@@ -636,6 +658,14 @@ impl UiContext {
 							acf,
 						});
 					}
+				}
+
+				if props.mask_and.is_some() {
+					draw_cmds.push(DrawCommand::MaskAnd(Color::WHITE));
+				}
+
+				if props.mask_or.is_some() {
+					draw_cmds.push(DrawCommand::MaskOr(Color::TRANSPARENT));
 				}
 
 				wid = self.widget(w).next;

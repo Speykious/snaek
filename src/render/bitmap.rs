@@ -76,7 +76,7 @@ impl Bitmap {
 		}
 	}
 
-	pub fn copy_bitmap_area(&mut self, other: &Bitmap, this_pos: Pos, other_pos: Pos, size: Size, acf: AlphaCompFn) {
+	pub fn copy_bitmap_area(&mut self, other: &Bitmap, this_pos: Pos, other_pos: Pos, size: Size, acf: AlphaCompFn, mask_and: Color, mask_or: Color) {
 		let this_cropped_rect = self.crop_rect(Rect::from_pos_size(this_pos, size));
 		let this_pos = this_cropped_rect.pos();
 
@@ -92,7 +92,9 @@ impl Bitmap {
 			let this_line = self.line_mut(pos(this_pos.x, this_pos.y + y), size.w);
 			let other_line = other.line(pos(other_pos.x, other_pos.y + y), size.w);
 			for (this_px, other_px) in this_line.iter_mut().zip(other_line.iter()) {
-				*this_px = (acf)(Color::from_hex(*other_px), Color::from_hex(*this_px)).to_u32();
+				let other_color = (Color::from_hex(*other_px) & mask_and) | mask_or;
+				let c = (acf)(other_color, Color::from_hex(*this_px));
+				*this_px = c.to_u32();
 			}
 		}
 	}

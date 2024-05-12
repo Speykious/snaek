@@ -52,13 +52,7 @@ impl WidgetProps {
 }
 
 impl UiContext {
-	pub fn btn_icon(
-		&mut self,
-		props: WidgetProps,
-		sheet_id: SpritesheetId,
-		sprite: Sprite,
-		hover_color: Color,
-	) -> WidgetReaction {
+	pub fn btn_icon(&mut self, props: WidgetProps, sprite_props: WidgetProps, hover_color: Color) -> WidgetReaction {
 		use WidgetFlags as Wf;
 
 		let key = props.key;
@@ -68,11 +62,7 @@ impl UiContext {
 			props.with_flags(prev_flags | Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::CAN_CLICK | Wf::DRAW_BACKGROUND),
 		);
 
-		let inner_sprite = self.build_widget(
-			WidgetProps::simple_sprite(wk!([key]), sheet_id, sprite)
-				.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
-				.with_acf(Some(alphacomp::xor)),
-		);
+		let inner_sprite = self.build_widget(sprite_props.with_anchor_origin(Anchor::CENTER, Anchor::CENTER));
 		self.add_child(button.id(), inner_sprite.id());
 
 		if button.hovered() {
@@ -165,30 +155,37 @@ impl UiContext {
 		let seconds = (seconds % 60) as usize;
 		let millis = (time.as_millis() % 1000) as usize;
 
+		const BRIGHT_GREEN: Color = Color::from_hex(0xff99e550);
+		const DIMMED_GREEN: Color = Color::from_hex(0xff64a328);
+
 		for (i, d) in [(1, (minutes / 10) % 10), (0, minutes % 10)] {
-			let digit = self.build_widget(WidgetProps::simple_sprite(wk!([key] i), sheet_id, digit_sprites[d]));
+			let digit = self.build_widget(
+				WidgetProps::simple_sprite(wk!([key] i), sheet_id, digit_sprites[d]).with_mask_and(Some(BRIGHT_GREEN)),
+			);
 			self.add_child(display.id(), digit.id());
 		}
 
-		let colon = self.build_widget(WidgetProps::simple_sprite(wk!([key]), sheet_id, colon_sprite));
+		let colon = self.build_widget(
+			WidgetProps::simple_sprite(wk!([key]), sheet_id, colon_sprite).with_mask_and(Some(BRIGHT_GREEN)),
+		);
 		self.add_child(display.id(), colon.id());
 
 		for (i, d) in [(1, (seconds / 10) % 10), (0, seconds % 10)] {
-			let digit = self.build_widget(WidgetProps::simple_sprite(wk!([key] i), sheet_id, digit_sprites[d]));
+			let digit = self.build_widget(
+				WidgetProps::simple_sprite(wk!([key] i), sheet_id, digit_sprites[d]).with_mask_and(Some(BRIGHT_GREEN)),
+			);
 			self.add_child(display.id(), digit.id());
 		}
 
-		let colon = self.build_widget(WidgetProps {
-			key: wk!([key]),
-			flags: WidgetFlags::DRAW_SPRITE,
-			size: WidgetSize::hug(),
-			sprite: Some(WidgetSprite::Simple(sheet_id, colon_sprite)),
-			..WidgetProps::default()
-		});
+		let colon = self.build_widget(
+			WidgetProps::simple_sprite(wk!([key]), sheet_id, colon_sprite).with_mask_and(Some(DIMMED_GREEN)),
+		);
 		self.add_child(display.id(), colon.id());
 
 		for (i, d) in [(2, (millis / 100) % 10), (1, (millis / 10) % 10), (0, millis % 10)] {
-			let digit = self.build_widget(WidgetProps::simple_sprite(wk!([key] i), sheet_id, digit_sprites[d]));
+			let digit = self.build_widget(
+				WidgetProps::simple_sprite(wk!([key] i), sheet_id, digit_sprites[d]).with_mask_and(Some(DIMMED_GREEN)),
+			);
 			self.add_child(display.id(), digit.id());
 		}
 

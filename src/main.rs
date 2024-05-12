@@ -68,6 +68,8 @@ fn game() -> Result<(), Box<dyn Error>> {
 	let snaek_sheet_id = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
 	let snaek_sheet = snake::snaek_sheet();
 
+	const SNAEK_BLACK: Color = Color::from_hex(0xff181425);
+
 	let options = WindowOptions {
 		borderless: true,
 		title: true,
@@ -137,8 +139,8 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 				let btn_close = ui.btn_icon(
 					WidgetProps::new(wk!()).with_size(WidgetSize::fixed(7, 7)),
-					snaek_sheet_id,
-					snaek_sheet.icon_close,
+					WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.icon_close)
+						.with_mask_and(Some(SNAEK_BLACK)),
 					Color::from_hex(0xffe43b44),
 				);
 				ui.add_child(navbar.id(), btn_close.id());
@@ -237,7 +239,8 @@ fn game() -> Result<(), Box<dyn Error>> {
 						{
 							let text = ui.build_widget(
 								WidgetProps::text(wk!(), renderer.text("Speykious"))
-									.with_anchor_origin(Anchor::BOTTOM_RIGHT, Anchor::BOTTOM_RIGHT),
+									.with_anchor_origin(Anchor::BOTTOM_RIGHT, Anchor::BOTTOM_RIGHT)
+									.with_mask_and(Some(SNAEK_BLACK)),
 							);
 							ui.add_child(text_holder.id(), text.id());
 						}
