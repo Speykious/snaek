@@ -244,6 +244,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 						if btn_restart.clicked() {
 							snake_game.restart();
+							show_game_over = false;
 							next_direction = snake_game.direction();
 						}
 
