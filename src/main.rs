@@ -14,7 +14,7 @@ use image::{ImageFormat, ImageResult};
 use math::size::Size;
 use minifb::{CursorStyle, Key, KeyRepeat, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
-use render::{DrawCommand, Renderer, SpritesheetId, Text};
+use render::{DrawCommand, Renderer, Rotate, SpritesheetId, Text};
 use snake::{Banana, SnaekSheet, SnakeGame};
 use ui::{
 	Anchor, FlexDirection, Mouse, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetLayout, WidgetPadding,
@@ -386,19 +386,56 @@ fn draw_snake_game(
 					ui.add_child(sprite_holder.id(), sprite.id());
 				}
 
+				let is_straight = slot.direction_next() == slot.direction_prev().opposite();
+
 				let snake_sprite = match (slot.has_snake_head(), slot.has_snake_tail()) {
-					(true, true) => Some(snaek_sheet.snake_straight),
-					(true, false) => Some(snaek_sheet.snake_head),
-					(false, true) => Some(snaek_sheet.snake_end),
+					(true, true) if is_straight => {
+						let rotate = match slot.direction_next() {
+							Direction::Up => Rotate::R270,
+							Direction::Right => Rotate::R0,
+							Direction::Down => Rotate::R90,
+							Direction::Left => Rotate::R180,
+						};
+						Some((snaek_sheet.snake_straight, rotate))
+					}
+					(true, true) => {
+						use Direction as D;
+						let rotate = match (slot.direction_next(), slot.direction_prev()) {
+							(D::Up, D::Right) | (D::Right, D::Up) => Rotate::R270,
+							(D::Right, D::Down) | (D::Down, D::Right) => Rotate::R0,
+							(D::Down, D::Left) | (D::Left, D::Down) => Rotate::R90,
+							(D::Left, D::Up) | (D::Up, D::Left) => Rotate::R180,
+							_ => Rotate::R0,
+						};
+						Some((snaek_sheet.snake_gay, rotate))
+					}
+					(true, false) => {
+						let rotate = match slot.direction_prev() {
+							Direction::Up => Rotate::R90,
+							Direction::Right => Rotate::R180,
+							Direction::Down => Rotate::R270,
+							Direction::Left => Rotate::R0,
+						};
+						Some((snaek_sheet.snake_head, rotate))
+					}
+					(false, true) => {
+						let rotate = match slot.direction_next() {
+							Direction::Up => Rotate::R0,
+							Direction::Right => Rotate::R90,
+							Direction::Down => Rotate::R180,
+							Direction::Left => Rotate::R270,
+						};
+						Some((snaek_sheet.snake_end, rotate))
+					}
 					(false, false) => None,
 				};
 
-				if let Some(snake_sprite) = snake_sprite {
+				if let Some((snake_sprite, rotate)) = snake_sprite {
 					let sprite = ui.build_widget(
 						WidgetProps::simple_sprite(wk!(ikey_x, ikey_y), snaek_sheet_id, snake_sprite)
+							.with_rotate(rotate)
 							.with_anchor_origin(Anchor::CENTER, Anchor::CENTER),
 					);
-					// TODO: rotate sprite, use correct snake sprites
 					ui.add_child(sprite_holder.id(), sprite.id());
 				}
 
