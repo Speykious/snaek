@@ -108,15 +108,16 @@ impl SnakeGame {
 
 		let next_head = self.next_at(self.snake_head);
 
-		// snake collision!
 		let next_slot = self.playfield[self.slot_index(next_head)];
-		if next_slot.has_snake() {
-			self.is_dead = true;
-			return;
-		}
-
 		if next_slot.banana().is_some() {
 			// banana eating logic
+
+			// snake collision!
+			// Since the tail stays in place, any snake part will make the snake die.
+			if next_slot.has_snake() {
+				self.is_dead = true;
+				return;
+			}
 
 			// push head
 			let curr_slot = &mut self.playfield[self.slot_index(self.snake_head)];
@@ -138,15 +139,12 @@ impl SnakeGame {
 		} else {
 			// snake be snakin
 
-			// push head
-			let curr_slot = &mut self.playfield[self.slot_index(self.snake_head)];
-			curr_slot.set_direction_next(self.direction);
-			curr_slot.set_snake_tail();
-
-			self.snake_head = self.wrap_pos(next_head);
-			let next_slot = &mut self.playfield[self.slot_index(next_head)];
-			next_slot.set_direction_prev(self.direction.opposite());
-			next_slot.set_snake_head();
+			// snake collision!
+			// Here it's fine if it's just the tail, since we're popping it right after.
+			if next_slot.has_snake_head() {
+				self.is_dead = true;
+				return;
+			}
 
 			// pop tail
 			let next_tail = self.next_at(self.snake_tail);
@@ -158,6 +156,16 @@ impl SnakeGame {
 			let next_slot = &mut self.playfield[self.slot_index(next_tail)];
 			next_slot.remove_snake();
 			next_slot.set_snake_tail();
+
+			// push head
+			let curr_slot = &mut self.playfield[self.slot_index(self.snake_head)];
+			curr_slot.set_direction_next(self.direction);
+			curr_slot.set_snake_tail();
+
+			self.snake_head = self.wrap_pos(next_head);
+			let next_slot = &mut self.playfield[self.slot_index(next_head)];
+			next_slot.set_direction_prev(self.direction.opposite());
+			next_slot.set_snake_head();
 		}
 	}
 
