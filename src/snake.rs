@@ -58,6 +58,7 @@ pub struct SnakeGame {
 	snake_tail: Pos,
 	bananas_eaten: u32,
 	direction: Direction,
+	ate_banana: bool,
 	is_dead: bool,
 
 	start: Instant,
@@ -80,6 +81,7 @@ impl SnakeGame {
 			snake_tail,
 			bananas_eaten: 0,
 			direction: Direction::Right,
+			ate_banana: false,
 			is_dead: false,
 
 			start: Instant::now(),
@@ -113,6 +115,7 @@ impl SnakeGame {
 			return;
 		}
 
+		self.ate_banana = false;
 		self.playfield[self.slot_index(self.snake_head)].set_direction_next(self.direction);
 
 		let next_head = self.next_at(self.snake_head);
@@ -120,6 +123,7 @@ impl SnakeGame {
 		let next_slot = self.playfield[self.slot_index(next_head)];
 		if next_slot.banana().is_some() {
 			// banana eating logic
+			self.ate_banana = true;
 
 			// snake collision!
 			// Since the tail stays in place, any snake part will make the snake die.
@@ -224,6 +228,14 @@ impl SnakeGame {
 
 	pub fn slot_at(&self, pos: Pos) -> Slot {
 		self.playfield[self.slot_index(pos)]
+	}
+
+	pub fn snake_head(&self) -> Pos {
+		self.snake_head
+	}
+
+	pub fn ate_banana(&self) -> bool {
+		self.ate_banana
 	}
 
 	pub fn is_dead(&self) -> bool {

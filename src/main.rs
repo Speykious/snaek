@@ -502,6 +502,33 @@ fn draw_snake_game(
 		}
 	}
 
+	if snake_game.ate_banana() {
+		let head_pos = snake_game.snake_head();
+
+		let (rotate, anchor) = match snake_game.slot_at(head_pos).direction_prev() {
+			Direction::Up => (Rotate::R90, Anchor::TOP_CENTER),
+			Direction::Right => (Rotate::R180, Anchor::CENTER_RIGHT),
+			Direction::Down => (Rotate::R270, Anchor::BOTTOM_CENTER),
+			Direction::Left => (Rotate::R0, Anchor::CENTER_LEFT),
+		};
+
+		let tongue_pos = head_pos + snake_game.direction().pos_offset();
+		let tongue_holder = ui.build_widget(
+			WidgetProps::new(wk!())
+				.with_size(WidgetSize::fixed(7, 7))
+				.with_pos(tongue_pos * 7),
+		);
+		{
+			let tongue = ui.build_widget(
+				WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.snake_tongue)
+					.with_anchor_origin(anchor, anchor)
+					.with_rotate(rotate),
+			);
+			ui.add_child(tongue_holder.id(), tongue.id());
+		}
+		ui.add_child(container_id, tongue_holder.id());
+	}
+
 	if *show_game_over {
 		let game_over_overlay = ui.build_widget(
 			WidgetProps::new(wk!())
