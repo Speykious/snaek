@@ -27,6 +27,8 @@ While coding the renderer for this game, I created the prettiest bug I've ever s
   <img height="400" src="https://fs.speykious.dev/snaek/prettiest-bug-i-ever-made.png" alt="Prettiest bug I ever made">
 </p>
 
+You can run the code that produced this bug by checking out [this commit](https://github.com/Speykious/snaek/commit/9e1bbe9d9b0187037d5ec48ca6dd1bc28b1f4f97) if you're curious.
+
 ## License
 
 This project is licensed under [MIT](/LICENSE).
