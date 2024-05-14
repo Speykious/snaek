@@ -10,7 +10,7 @@ use crate::math::size::Size;
 use crate::render::color::alphacomp::AlphaCompFn;
 use crate::render::color::{alphacomp, Color};
 use crate::render::sprite::{NineSlicingSprite, Sprite};
-use crate::render::{DrawCommand, SpritesheetId, Text};
+use crate::render::{DrawCommand, Rotate, SpritesheetId, Text};
 
 pub mod components;
 pub mod layout;
@@ -320,6 +320,7 @@ pub struct WidgetProps {
 	pub mask_or: Option<Color>,
 	pub acf: Option<AlphaCompFn>,
 	pub sprite: Option<WidgetSprite>,
+	pub rotate: Rotate,
 
 	// declarative layout data
 	pub anchor: Anchor,
@@ -388,6 +389,12 @@ impl WidgetProps {
 	#[inline]
 	pub const fn with_sprite(mut self, sprite: Option<WidgetSprite>) -> Self {
 		self.sprite = sprite;
+		self
+	}
+
+	#[inline]
+	pub const fn with_rotate(mut self, rotate: Rotate) -> Self {
+		self.rotate = rotate;
 		self
 	}
 
@@ -615,6 +622,7 @@ impl UiContext {
 						Some(WidgetSprite::Simple(sheet_id, sprite)) => {
 							draw_cmds.push(DrawCommand::Sprite {
 								pos: solved_rect.pos(),
+								rotate: widget.props.rotate,
 								sheet_id,
 								sprite,
 								acf,

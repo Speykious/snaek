@@ -2,6 +2,7 @@ use crate::math::pos::Pos;
 use crate::math::rect::Rect;
 use crate::math::size::size;
 use crate::math::LayoutRect;
+use crate::render::Rotate;
 
 use super::{Anchor, FlexDirection, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetLayout, WidgetSprite};
 
@@ -145,8 +146,13 @@ impl UiContext {
 		// take sprite into account
 		if widget.props.flags.has(WidgetFlags::DRAW_SPRITE) {
 			if let Some(WidgetSprite::Simple(_, sprite)) = &widget.props.sprite {
-				solved_min_width = solved_min_width.max(sprite.w);
-				solved_min_height = solved_min_height.max(sprite.h);
+				let (w, h) = match widget.props.rotate {
+					Rotate::R0 | Rotate::R180 => (sprite.w, sprite.h),
+					Rotate::R90 | Rotate::R270 => (sprite.h, sprite.w),
+				};
+
+				solved_min_width = solved_min_width.max(w);
+				solved_min_height = solved_min_height.max(h);
 			}
 		}
 

@@ -1,6 +1,7 @@
 use super::color::alphacomp::AlphaCompFn;
 use super::color::Color;
-use super::{Pos, Rect, Size};
+use super::{Pos, Rect, Rotate, Size};
+use crate::math;
 use crate::math::pos::pos;
 
 /// RGBA bitmap.
@@ -76,7 +77,16 @@ impl Bitmap {
 		}
 	}
 
-	pub fn copy_bitmap_area(&mut self, other: &Bitmap, this_pos: Pos, other_pos: Pos, size: Size, acf: AlphaCompFn, mask_and: Color, mask_or: Color) {
+	pub fn copy_bitmap_area(
+		&mut self,
+		other: &Bitmap,
+		this_pos: Pos,
+		other_pos: Pos,
+		size: Size,
+		acf: AlphaCompFn,
+		mask_and: Color,
+		mask_or: Color,
+	) {
 		let this_cropped_rect = self.crop_rect(Rect::from_pos_size(this_pos, size));
 		let this_pos = this_cropped_rect.pos();
 
@@ -95,6 +105,56 @@ impl Bitmap {
 				let other_color = (Color::from_hex(*other_px) & mask_and) | mask_or;
 				let c = (acf)(other_color, Color::from_hex(*this_px));
 				*this_px = c.to_u32();
+			}
+		}
+	}
+
+	pub fn copy_and_rotate_bitmap_area(
+		&mut self,
+		other: &Bitmap,
+		this_pos: Pos,
+		other_pos: Pos,
+		size: Size,
+		acf: AlphaCompFn,
+		mask_and: Color,
+		mask_or: Color,
+		rotate: Rotate,
+	) {
+		let rot_size = match rotate {
+			Rotate::R0 | Rotate::R180 => math::size::size(size.w, size.h),
+			Rotate::R90 | Rotate::R270 => math::size::size(size.h, size.w),
+		};
+
+		let this_cropped_rect = self.crop_rect(Rect::from_pos_size(this_pos, rot_size));
+		let this_pos = this_cropped_rect.pos();
+
+		if (this_pos.x as i32) >= (self.size.w as i32) || (this_pos.y as i32) >= (self.size.h as i32) {
+			return;
+		}
+
+		if (this_pos.x as i32) + (rot_size.w as i32) < 0 || (this_pos.y as i32) + (rot_size.h as i32) < 0 {
+			return;
+		}
+
+		for y in 0..(size.h as i32).min(self.size.h as i32 - this_pos.y as i32) as i16 {
+			for x in 0..(size.w as i32).min(self.size.w as i32 - this_pos.x as i32) as i16 {
+				let (rx, ry) = match rotate {
+					Rotate::R0 => (x, y),
+					Rotate::R90 => (size.h as i16 - 1 - y, x),
+					Rotate::R180 => (size.w as i16 - 1 - x, size.h as i16 - 1 - y),
+					Rotate::R270 => (y, size.w as i16 - 1 - x),
+				};
+
+				let dpos = math::pos::pos(x, y);
+				let rpos = math::pos::pos(rx, ry);
+
+				let other_idx = other.index(other_pos + dpos);
+				let other_px = other.buffer[other_idx];
+				let other_color = (Color::from_hex(other_px) & mask_and) | mask_or;
+
+				let other_idx = self.index(this_pos + rpos);
+				let this_px = &mut self.buffer[other_idx];
+				*this_px = (acf)(other_color, Color::from_hex(*this_px)).to_u32();
 			}
 		}
 	}

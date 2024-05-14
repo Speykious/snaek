@@ -149,7 +149,16 @@ impl Text {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Rotate {
+	#[default]
+	R0,
+	R90,
+	R180,
+	R270,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DrawCommand {
 	Clear,
 	Fill {
@@ -165,6 +174,7 @@ pub enum DrawCommand {
 	},
 	Sprite {
 		pos: Pos,
+		rotate: Rotate,
 		sheet_id: SpritesheetId,
 		sprite: Sprite,
 		acf: AlphaCompFn,
@@ -234,6 +244,7 @@ fn draw(
 			}
 			DrawCommand::Sprite {
 				pos,
+				rotate,
 				sheet_id,
 				sprite,
 				acf,
@@ -246,7 +257,7 @@ fn draw(
 					continue;
 				};
 
-				(fb_stack.fb_mut(fb_id)).copy_bitmap_area(
+				(fb_stack.fb_mut(fb_id)).copy_and_rotate_bitmap_area(
 					bitmap,
 					pos,
 					sprite.rect.pos(),
@@ -254,6 +265,7 @@ fn draw(
 					acf,
 					mask_and,
 					mask_or,
+					rotate,
 				);
 			}
 			DrawCommand::NineSlicingSprite {
