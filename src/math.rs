@@ -25,6 +25,7 @@ impl LayoutRect {
 		}
 	}
 
+	#[allow(unused)]
 	pub fn anchor(&self, anchor: Anchor) -> Pos {
 		let pos = self.top_left();
 		Pos {

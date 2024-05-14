@@ -72,8 +72,6 @@ macro_rules! wk {
 
 #[derive(Debug, Clone)]
 pub struct Widget {
-	id: WidgetId,
-
 	// tree links
 	// It's side-stepping-the-borrow-checker time!
 	// note: `next` and `prev` get reused as an intrusive free list when the widget is "freed".
@@ -140,6 +138,7 @@ pub struct Anchor {
 }
 
 #[rustfmt::skip]
+#[allow(unused)]
 impl Anchor {
 	pub const TOP_LEFT:      Self = Self { x: 0.0, y: 0.0 };
 	pub const TOP_CENTER:    Self = Self { x: 0.5, y: 0.0 };
@@ -229,6 +228,7 @@ impl WidgetPadding {
 pub struct WidgetFlags(u32);
 
 #[rustfmt::skip]
+#[allow(unused)]
 impl WidgetFlags {
 	pub const NONE:            Self = Self(0);
 	pub const DISABLED:        Self = Self(1 << 0);
@@ -332,6 +332,7 @@ pub struct WidgetProps {
 	pub layout: WidgetLayout,
 }
 
+#[allow(unused)]
 impl WidgetProps {
 	#[inline]
 	pub fn new(key: WidgetKey) -> Self {
@@ -395,18 +396,6 @@ impl WidgetProps {
 	#[inline]
 	pub const fn with_rotate(mut self, rotate: Rotate) -> Self {
 		self.rotate = rotate;
-		self
-	}
-
-	#[inline]
-	pub const fn with_anchor(mut self, anchor: Anchor) -> Self {
-		self.anchor = anchor;
-		self
-	}
-
-	#[inline]
-	pub const fn with_origin(mut self, origin: Anchor) -> Self {
-		self.origin = origin;
 		self
 	}
 
@@ -516,8 +505,6 @@ impl UiContext {
 				let id = Self::id_from_index(self.widgets.len());
 				self.keys.insert(props.key, id);
 				self.widgets.push(RefCell::new(Widget {
-					id,
-
 					parent: None,
 					prev: None,
 					next: None,
@@ -660,7 +647,6 @@ impl UiContext {
 					draw_cmds.push(DrawCommand::Text {
 						text: text.text().clone(),
 						pos: solved_rect.pos(),
-						color: props.color,
 						acf,
 					});
 				}
@@ -748,6 +734,7 @@ pub struct Mouse {
 	pub m_pressed: (bool, bool),
 }
 
+#[allow(unused)]
 impl Mouse {
 	#[inline]
 	pub const fn l_pressed(&self) -> bool {

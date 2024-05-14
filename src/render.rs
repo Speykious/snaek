@@ -122,14 +122,6 @@ impl Renderer {
 			&self.ascii_bitmap,
 		);
 	}
-
-	pub fn size(&self) -> Size {
-		self.fb_stack.size
-	}
-
-	pub fn rect(&self) -> Rect {
-		Rect::from_pos_size(Pos::ZERO, self.size())
-	}
 }
 
 /// A piece of measured text.
@@ -188,7 +180,6 @@ pub enum DrawCommand {
 	Text {
 		text: Arc<str>,
 		pos: Pos,
-		color: Color,
 		acf: AlphaCompFn,
 	},
 	MaskAnd(Color),
@@ -478,12 +469,7 @@ fn draw(
 					);
 				}
 			}
-			DrawCommand::Text {
-				pos,
-				ref text,
-				color,
-				acf,
-			} => {
+			DrawCommand::Text { pos, ref text, acf } => {
 				let mut pos = pos;
 				let fb = fb_stack.fb_mut(fb_id);
 

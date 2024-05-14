@@ -1,4 +1,7 @@
-use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::ops::{
+	Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign, Mul, MulAssign,
+	Sub, SubAssign,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(C, align(4))]
@@ -11,13 +14,7 @@ pub struct Color {
 
 impl Color {
 	pub const TRANSPARENT: Self = Self::from_hex(0x00000000);
-	pub const BLACK: Self = Self::from_hex(0xff000000);
 	pub const WHITE: Self = Self::from_hex(0xffffffff);
-
-	#[inline]
-	pub const fn new(a: u8, r: u8, g: u8, b: u8) -> Self {
-		Self { a, r, g, b }
-	}
 
 	#[inline]
 	pub const fn from_hex(hex: u32) -> Self {
@@ -217,11 +214,5 @@ pub mod alphacomp {
 	#[inline]
 	pub fn dst(pixa: Color, _pixb: Color) -> Color {
 		pixa
-	}
-
-	/// Computes B.
-	#[inline]
-	pub fn src(_pixa: Color, pixb: Color) -> Color {
-		pixb
 	}
 }

@@ -1,8 +1,5 @@
-#![allow(clippy::too_many_arguments)]
-#![allow(unused)] // TODO: remove this thing as soon as possible
-
 use std::error::Error;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::snake::Direction;
 
@@ -12,9 +9,9 @@ use self::render::bitmap::Bitmap;
 use self::render::color::{alphacomp, Color};
 use image::{ImageFormat, ImageResult};
 use math::size::Size;
-use minifb::{CursorStyle, Key, KeyRepeat, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
-use render::{DrawCommand, Renderer, Rotate, SpritesheetId, Text};
+use render::{DrawCommand, Renderer, Rotate, SpritesheetId};
 use snake::{Banana, SnaekSheet, SnakeGame};
 use ui::{
 	Anchor, FlexDirection, Mouse, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetLayout, WidgetPadding,
@@ -365,6 +362,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 	Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_snake_game(
 	snake_game: &SnakeGame,
 	ui: &mut UiContext,

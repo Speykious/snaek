@@ -25,13 +25,6 @@ impl Bitmap {
 		}
 	}
 
-	/// Resizes the bitmap with `size` as the size.
-	/// This completely resets the data.
-	pub fn resize(&mut self, size: Size) {
-		self.buffer = vec![0; size.w as usize * size.h as usize];
-		self.size = size;
-	}
-
 	#[inline]
 	pub fn pixels(&self) -> &[u32] {
 		&self.buffer
@@ -77,6 +70,7 @@ impl Bitmap {
 		}
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	pub fn copy_bitmap_area(
 		&mut self,
 		other: &Bitmap,
@@ -109,6 +103,7 @@ impl Bitmap {
 		}
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	pub fn copy_and_rotate_bitmap_area(
 		&mut self,
 		other: &Bitmap,

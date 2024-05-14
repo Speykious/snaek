@@ -20,15 +20,6 @@ impl Rect {
 	}
 
 	#[inline]
-	pub fn from_ab(pos_a: Pos, pos_b: Pos) -> Self {
-		let xa = pos_a.x.min(pos_b.x);
-		let ya = pos_a.y.min(pos_b.y);
-		let xb = pos_a.x.max(pos_b.x);
-		let yb = pos_a.y.max(pos_b.y);
-		Self::from_xywh(xa, ya, (xb - xa) as u16, (yb - ya) as u16)
-	}
-
-	#[inline]
 	pub const fn from_pos_size(pos: Pos, size: Size) -> Self {
 		Self {
 			x: pos.x,

@@ -1,12 +1,10 @@
 pub mod snaeksheet;
 
-use std::collections::VecDeque;
-
 use rand::rngs::ThreadRng;
 use rand::Rng;
 pub use snaeksheet::{snaek_sheet, SnaekSheet};
 
-use crate::math::pos::{self, pos, Pos};
+use crate::math::pos::{pos, Pos};
 use crate::math::size::Size;
 
 fn rand_pos(rng: &mut ThreadRng, size: Size) -> Pos {
@@ -56,7 +54,6 @@ pub struct SnakeGame {
 	playfield: Box<[Slot]>,
 	snake_head: Pos,
 	snake_tail: Pos,
-	snake_len: u32,
 	bananas_eaten: u32,
 	direction: Direction,
 	is_dead: bool,
@@ -64,7 +61,7 @@ pub struct SnakeGame {
 
 impl SnakeGame {
 	pub fn new(playfield_size: Size) -> Self {
-		let mut thread_rng = rand::thread_rng();
+		let thread_rng = rand::thread_rng();
 
 		let playfield = vec![Slot::default(); playfield_size.w as usize * playfield_size.h as usize].into_boxed_slice();
 		let snake_head = pos((playfield_size.w / 2) as i16, (playfield_size.h / 2) as i16);
@@ -76,7 +73,6 @@ impl SnakeGame {
 			playfield,
 			snake_head,
 			snake_tail,
-			snake_len: 0,
 			bananas_eaten: 0,
 			direction: Direction::Right,
 			is_dead: false,
@@ -102,9 +98,6 @@ impl SnakeGame {
 		}
 
 		self.playfield[self.slot_index(self.snake_head)].set_direction_next(self.direction);
-
-		let width = self.size.w as i16;
-		let height = self.size.h as i16;
 
 		let next_head = self.next_at(self.snake_head);
 
@@ -223,24 +216,12 @@ impl SnakeGame {
 		self.bananas_eaten
 	}
 
-	pub fn snake_head(&self) -> Pos {
-		self.snake_head
-	}
-
-	pub fn snake_tail(&self) -> Pos {
-		self.snake_tail
-	}
-
-	pub fn snake_len(&self) -> usize {
-		self.snake_len as usize
-	}
-
 	pub fn direction(&self) -> Direction {
 		self.direction
 	}
 
 	#[inline]
-	fn wrap_pos(&self, mut p: Pos) -> Pos {
+	fn wrap_pos(&self, p: Pos) -> Pos {
 		let w = self.size.w as i16;
 		let h = self.size.h as i16;
 
@@ -259,11 +240,6 @@ impl SnakeGame {
 	#[inline]
 	fn next_at(&self, pos: Pos) -> Pos {
 		pos + self.playfield[self.slot_index(pos)].direction_next().pos_offset()
-	}
-
-	#[inline]
-	fn prev_at(&self, pos: Pos) -> Pos {
-		pos + self.playfield[self.slot_index(pos)].direction_prev().pos_offset()
 	}
 }
 

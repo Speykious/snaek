@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use crate::math::pos::pos;
-use crate::render::color::alphacomp::{self, AlphaCompFn};
 use crate::render::color::Color;
 use crate::render::sprite::{NineSlicingSprite, Sprite};
 use crate::render::{SpritesheetId, Text};
@@ -9,8 +8,8 @@ use crate::ui::WidgetSprite;
 use crate::wk;
 
 use super::{
-	Anchor, FlexDirection, UiContext, Widget, WidgetDim, WidgetFlags, WidgetId, WidgetKey, WidgetLayout, WidgetPadding,
-	WidgetProps, WidgetReaction, WidgetSize,
+	Anchor, FlexDirection, UiContext, WidgetFlags, WidgetId, WidgetKey, WidgetLayout, WidgetPadding, WidgetProps,
+	WidgetReaction, WidgetSize,
 };
 
 impl WidgetProps {
@@ -55,9 +54,7 @@ impl UiContext {
 	pub fn btn_icon(&mut self, props: WidgetProps, sprite_props: WidgetProps, hover_color: Color) -> WidgetReaction {
 		use WidgetFlags as Wf;
 
-		let key = props.key;
 		let prev_flags = props.flags;
-
 		let button = self.build_widget(
 			props.with_flags(prev_flags | Wf::CAN_FOCUS | Wf::CAN_HOVER | Wf::CAN_CLICK | Wf::DRAW_BACKGROUND),
 		);
