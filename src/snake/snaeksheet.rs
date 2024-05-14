@@ -53,10 +53,10 @@ pub struct SnaekSheet {
 	/// Close button icon
 	pub icon_close: Sprite,
 
-	/// Play/pause button's play icon
+	/// Play/debug button's play icon
 	pub icon_play: Sprite,
-	/// Play/pause button's pause icon
-	pub icon_pause: Sprite,
+	/// Play/debug button's pause icon
+	pub icon_debug: Sprite,
 	/// Restart button icon
 	pub icon_restart: Sprite,
 
@@ -105,7 +105,7 @@ pub fn snaek_sheet() -> SnaekSheet {
 		icon_close:         Sprite::new(Rect::from_xywh(  1,  16,  3,  3)),
 
 		icon_play:          Sprite::new(Rect::from_xywh(  1,  19,  4,  4)),
-		icon_pause:         Sprite::new(Rect::from_xywh(  5,  19,  4,  4)),
+		icon_debug:         Sprite::new(Rect::from_xywh(  5,  19,  4,  4)),
 		icon_restart:       Sprite::new(Rect::from_xywh(  5,  15,  4,  4)),
 
 		num_bang:           Sprite::new(Rect::from_xywh(  0,  23,  1,  5)),

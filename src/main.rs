@@ -15,7 +15,7 @@ use math::size::Size;
 use minifb::{CursorStyle, Key, KeyRepeat, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::{DrawCommand, Renderer, SpritesheetId, Text};
-use snake::{SnaekSheet, SnakeGame};
+use snake::{Banana, SnaekSheet, SnakeGame};
 use ui::{
 	Anchor, FlexDirection, Mouse, UiContext, WidgetDim, WidgetFlags, WidgetId, WidgetLayout, WidgetPadding,
 	WidgetProps, WidgetSize, WidgetSprite,
@@ -87,6 +87,8 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 	let mut snake_game = SnakeGame::new(size(11, 11));
 	let mut next_direction = snake_game.direction();
+
+	let mut debug = false;
 
 	let start = Instant::now();
 
@@ -232,12 +234,19 @@ fn game() -> Result<(), Box<dyn Error>> {
 							next_direction = snake_game.direction();
 						}
 
-						let icon_playpause = ui.build_widget(
-							WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.icon_pause)
-								.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
-								.with_acf(Some(alphacomp::xor)),
-						);
-						let btn_playpause = ui.btn_box(
+						let icon_playpause = {
+							let sprite = match debug {
+								true => snaek_sheet.icon_play,
+								false => snaek_sheet.icon_debug,
+							};
+
+							ui.build_widget(
+								WidgetProps::simple_sprite(wk!(), snaek_sheet_id, sprite)
+									.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
+									.with_acf(Some(alphacomp::xor)),
+							)
+						};
+						let btn_playdebug = ui.btn_box(
 							WidgetProps::new(wk!())
 								.with_size(WidgetSize::hug())
 								.with_padding(WidgetPadding::hv(3, 2)),
@@ -245,7 +254,11 @@ fn game() -> Result<(), Box<dyn Error>> {
 							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
 							icon_playpause.id(),
 						);
-						ui.add_child(middle_frame.id(), btn_playpause.id());
+						ui.add_child(middle_frame.id(), btn_playdebug.id());
+
+						if btn_playdebug.clicked() {
+							debug = !debug;
+						}
 					}
 					ui.add_child(display_frame.id(), middle_frame.id());
 
@@ -292,7 +305,14 @@ fn game() -> Result<(), Box<dyn Error>> {
 							.with_color(Color::from_hex(0xff262b44)),
 					);
 					{
-						draw_snake_game(&snake_game, &mut ui, snake_container.id(), snaek_sheet_id, &snaek_sheet);
+						draw_snake_game(
+							&snake_game,
+							&mut ui,
+							snake_container.id(),
+							snaek_sheet_id,
+							&snaek_sheet,
+							debug,
+						);
 					}
 					ui.add_child(playfield.id(), snake_container.id());
 				}
@@ -329,48 +349,99 @@ fn draw_snake_game(
 	container_id: WidgetId,
 	snaek_sheet_id: SpritesheetId,
 	snaek_sheet: &SnaekSheet,
+	debug: bool,
 ) {
-	let banana_pos = snake_game.curr_banana_pos();
+	let playfield_size = snake_game.size();
+	for y in 0..playfield_size.h as i16 {
+		for x in 0..playfield_size.w as i16 {
+			let slot_pos = pos(x, y);
+			let slot = snake_game.slot_at(slot_pos);
 
-	let banana_holder = ui.build_widget(
-		WidgetProps::new(wk!())
-			.with_size(WidgetSize::fixed(7, 7))
-			.with_pos(banana_pos * 7),
-	);
-	{
-		let sprite = ui.build_widget(
-			WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.banana_yellow)
-				.with_anchor_origin(Anchor::CENTER, Anchor::CENTER),
-		);
-		ui.add_child(banana_holder.id(), sprite.id());
-	}
-	ui.add_child(container_id, banana_holder.id());
-
-	let snake_len = snake_game.snake_len();
-	for (i, part_pos) in snake_game.snake_iter().enumerate() {
-		let (ikey_x, ikey_y) = (part_pos.x as u64, part_pos.y as u64);
-
-		let sprite_holder = ui.build_widget(
-			WidgetProps::new(wk!(ikey_x, ikey_y))
+			let (ikey_x, ikey_y) = (slot_pos.x as u64, slot_pos.y as u64);
+			let mut holder_props = WidgetProps::new(wk!(ikey_x, ikey_y))
 				.with_size(WidgetSize::fixed(7, 7))
-				.with_pos(part_pos * 7),
-		);
-		{
-			let sprite = if i == 0 {
-				snaek_sheet.snake_head
-			} else if i == snake_len - 1 {
-				snaek_sheet.snake_end
-			} else {
-				snaek_sheet.snake_straight
-			};
+				.with_pos(slot_pos * 7);
 
-			let sprite = ui.build_widget(
-				WidgetProps::simple_sprite(wk!(ikey_x, ikey_y), snaek_sheet_id, sprite)
-					.with_anchor_origin(Anchor::CENTER, Anchor::CENTER),
-			);
-			// TODO: rotate sprite, use correct snake sprites
-			ui.add_child(sprite_holder.id(), sprite.id());
+			if debug {
+				holder_props = holder_props
+					.with_flags(WidgetFlags::DRAW_BORDER)
+					.with_border_color(Color::from_hex(0xff333333))
+					.with_border_width(1)
+					.with_acf(Some(alphacomp::add));
+			}
+
+			let sprite_holder = ui.build_widget(holder_props);
+			{
+				if let Some(banana) = slot.banana() {
+					let banana_sprite = match banana {
+						Banana::Yellow => snaek_sheet.banana_yellow,
+						Banana::Red => snaek_sheet.banana_red,
+						Banana::Cyan => snaek_sheet.banana_cyan,
+					};
+
+					let sprite = ui.build_widget(
+						WidgetProps::simple_sprite(wk!(), snaek_sheet_id, banana_sprite)
+							.with_anchor_origin(Anchor::CENTER, Anchor::CENTER),
+					);
+					ui.add_child(sprite_holder.id(), sprite.id());
+				}
+
+				let snake_sprite = match (slot.has_snake_head(), slot.has_snake_tail()) {
+					(true, true) => Some(snaek_sheet.snake_straight),
+					(true, false) => Some(snaek_sheet.snake_head),
+					(false, true) => Some(snaek_sheet.snake_end),
+					(false, false) => None,
+				};
+
+				if let Some(snake_sprite) = snake_sprite {
+					let sprite = ui.build_widget(
+						WidgetProps::simple_sprite(wk!(ikey_x, ikey_y), snaek_sheet_id, snake_sprite)
+							.with_anchor_origin(Anchor::CENTER, Anchor::CENTER),
+					);
+					// TODO: rotate sprite, use correct snake sprites
+					ui.add_child(sprite_holder.id(), sprite.id());
+				}
+
+				// debug sprites
+				if debug {
+					// direction next
+					let (anchor, w, h) = match slot.direction_next() {
+						Direction::Up => (Anchor::TOP_CENTER, 1, 2),
+						Direction::Right => (Anchor::CENTER_RIGHT, 2, 1),
+						Direction::Down => (Anchor::BOTTOM_CENTER, 1, 2),
+						Direction::Left => (Anchor::CENTER_LEFT, 2, 1),
+					};
+
+					let sprite = ui.build_widget(
+						WidgetProps::new(wk!(ikey_x, ikey_y))
+							.with_flags(WidgetFlags::DRAW_BACKGROUND)
+							.with_color(Color::from_hex(0xff116611))
+							.with_size(WidgetSize::fixed(w, h))
+							.with_anchor_origin(anchor, anchor)
+							.with_acf(Some(alphacomp::add)),
+					);
+					ui.add_child(sprite_holder.id(), sprite.id());
+
+					// direction prev
+					let (anchor, w, h) = match slot.direction_prev() {
+						Direction::Up => (Anchor::TOP_CENTER, 1, 3),
+						Direction::Right => (Anchor::CENTER_RIGHT, 3, 1),
+						Direction::Down => (Anchor::BOTTOM_CENTER, 1, 3),
+						Direction::Left => (Anchor::CENTER_LEFT, 3, 1),
+					};
+
+					let sprite = ui.build_widget(
+						WidgetProps::new(wk!(ikey_x, ikey_y))
+							.with_flags(WidgetFlags::DRAW_BACKGROUND)
+							.with_color(Color::from_hex(0xff661111))
+							.with_size(WidgetSize::fixed(w, h))
+							.with_anchor_origin(anchor, anchor)
+							.with_acf(Some(alphacomp::add)),
+					);
+					ui.add_child(sprite_holder.id(), sprite.id());
+				}
+			}
+			ui.add_child(container_id, sprite_holder.id());
 		}
-		ui.add_child(container_id, sprite_holder.id());
 	}
 }
