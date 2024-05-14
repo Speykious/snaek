@@ -133,9 +133,7 @@ impl SnakeGame {
 			next_slot.set_banana(None);
 			self.bananas_eaten += 1;
 
-			// place new banana
-			let banana_pos = rand_pos(&mut self.thread_rng, self.size);
-			self.playfield[self.slot_index(banana_pos)].set_banana(Some(Banana::Yellow));
+			self.place_banana();
 		} else {
 			// snake be snakin
 
@@ -188,8 +186,25 @@ impl SnakeGame {
 		self.direction = Direction::Right;
 		self.is_dead = false;
 
-		let banana_pos = rand_pos(&mut self.thread_rng, self.size);
-		self.playfield[self.slot_index(banana_pos)].set_banana(Some(Banana::Yellow));
+		self.place_banana();
+	}
+
+	fn place_banana(&mut self) {
+		loop {
+			let banana_pos = rand_pos(&mut self.thread_rng, self.size);
+			let slot = &mut self.playfield[self.slot_index(banana_pos)];
+			if slot.has_snake() {
+				continue;
+			}
+
+			let banana = match self.thread_rng.gen_range(0..100) {
+				0 => Banana::Cyan,
+				1..=9 => Banana::Red,
+				_ => Banana::Yellow,
+			};
+			slot.set_banana(Some(banana));
+			break;
+		}
 	}
 
 	pub fn size(&self) -> Size {
