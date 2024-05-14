@@ -598,97 +598,87 @@ impl UiContext {
 
 	fn draw_widgets_rec(&mut self, draw_cmds: &mut Vec<DrawCommand>, wid: WidgetId) {
 		{
-			let mut wid = Some(wid);
-			while let Some(w) = wid {
-				let widget = self.widget(w);
-				let props = &widget.props;
+			let widget = self.widget(wid);
+			let props = &widget.props;
 
-				let acf = props.acf.unwrap_or(alphacomp::over);
+			let acf = props.acf.unwrap_or(alphacomp::over);
 
-				let mut solved_rect = widget.solved_rect;
-				solved_rect.x += widget.props.draw_offset.x;
-				solved_rect.y += widget.props.draw_offset.y;
+			let mut solved_rect = widget.solved_rect;
+			solved_rect.x += widget.props.draw_offset.x;
+			solved_rect.y += widget.props.draw_offset.y;
 
-				if let Some(mask_and) = props.mask_and {
-					draw_cmds.push(DrawCommand::MaskAnd(mask_and));
-				}
+			if let Some(mask_and) = props.mask_and {
+				draw_cmds.push(DrawCommand::MaskAnd(mask_and));
+			}
 
-				if let Some(mask_or) = props.mask_or {
-					draw_cmds.push(DrawCommand::MaskOr(mask_or));
-				}
+			if let Some(mask_or) = props.mask_or {
+				draw_cmds.push(DrawCommand::MaskOr(mask_or));
+			}
 
-				if props.flags.has(WidgetFlags::DRAW_SPRITE) {
-					match props.sprite {
-						Some(WidgetSprite::Simple(sheet_id, sprite)) => {
-							draw_cmds.push(DrawCommand::Sprite {
-								pos: solved_rect.pos(),
-								rotate: widget.props.rotate,
-								sheet_id,
-								sprite,
-								acf,
-							});
-						}
-						Some(WidgetSprite::NineSlice(sheet_id, nss)) => {
-							draw_cmds.push(DrawCommand::NineSlicingSprite {
-								rect: solved_rect,
-								sheet_id,
-								nss,
-								acf,
-							});
-						}
-						None => {}
+			if props.flags.has(WidgetFlags::DRAW_SPRITE) {
+				match props.sprite {
+					Some(WidgetSprite::Simple(sheet_id, sprite)) => {
+						draw_cmds.push(DrawCommand::Sprite {
+							pos: solved_rect.pos(),
+							rotate: widget.props.rotate,
+							sheet_id,
+							sprite,
+							acf,
+						});
 					}
+					Some(WidgetSprite::NineSlice(sheet_id, nss)) => {
+						draw_cmds.push(DrawCommand::NineSlicingSprite {
+							rect: solved_rect,
+							sheet_id,
+							nss,
+							acf,
+						});
+					}
+					None => {}
 				}
+			}
 
-				if props.flags.has(WidgetFlags::DRAW_BACKGROUND) {
-					draw_cmds.push(DrawCommand::Fill {
-						rect: solved_rect,
+			if props.flags.has(WidgetFlags::DRAW_BACKGROUND) {
+				draw_cmds.push(DrawCommand::Fill {
+					rect: solved_rect,
+					color: props.color,
+					acf,
+				});
+			}
+
+			if props.flags.has(WidgetFlags::DRAW_BORDER) {
+				draw_cmds.push(DrawCommand::Stroke {
+					rect: solved_rect,
+					color: props.border_color,
+					stroke_width: 1,
+					acf,
+				});
+			}
+
+			if props.flags.has(WidgetFlags::DRAW_TEXT) {
+				if let Some(text) = &widget.props.text {
+					draw_cmds.push(DrawCommand::Text {
+						text: text.text().clone(),
+						pos: solved_rect.pos(),
 						color: props.color,
 						acf,
 					});
 				}
+			}
 
-				if props.flags.has(WidgetFlags::DRAW_BORDER) {
-					draw_cmds.push(DrawCommand::Stroke {
-						rect: solved_rect,
-						color: props.border_color,
-						stroke_width: 1,
-						acf,
-					});
-				}
+			if props.mask_and.is_some() {
+				draw_cmds.push(DrawCommand::MaskAnd(Color::WHITE));
+			}
 
-				if props.flags.has(WidgetFlags::DRAW_TEXT) {
-					if let Some(text) = &widget.props.text {
-						draw_cmds.push(DrawCommand::Text {
-							text: text.text().clone(),
-							pos: solved_rect.pos(),
-							color: props.color,
-							acf,
-						});
-					}
-				}
-
-				if props.mask_and.is_some() {
-					draw_cmds.push(DrawCommand::MaskAnd(Color::WHITE));
-				}
-
-				if props.mask_or.is_some() {
-					draw_cmds.push(DrawCommand::MaskOr(Color::TRANSPARENT));
-				}
-
-				wid = self.widget(w).next;
+			if props.mask_or.is_some() {
+				draw_cmds.push(DrawCommand::MaskOr(Color::TRANSPARENT));
 			}
 		}
 
-		{
-			let mut wid = Some(wid);
-			while let Some(w) = wid {
-				let first_child = self.widget(w).first_child;
-				if let Some(first_child) = first_child {
-					self.draw_widgets_rec(draw_cmds, first_child);
-				}
-				wid = self.widget(w).next;
-			}
+		let mut child = self.widget(wid).first_child;
+		while let Some(ch) = child {
+			self.draw_widgets_rec(draw_cmds, ch);
+			child = self.widget(ch).next;
 		}
 	}
 
