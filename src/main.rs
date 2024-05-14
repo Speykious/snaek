@@ -62,6 +62,8 @@ fn load_png_from_memory(png: &[u8]) -> ImageResult<Bitmap> {
 
 const VIEWPORT_SIZE: Size = size(WIDTH, HEIGHT);
 
+const SNAEK_BLACK: Color = Color::from_hex(0xff181425);
+
 fn game() -> Result<(), Box<dyn Error>> {
 	let ascii_bitmap = load_png_from_memory(IMG_ASCII_CHARS)?;
 
@@ -70,8 +72,6 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 	let snaek_sheet_id = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
 	let snaek_sheet = snake::snaek_sheet();
-
-	const SNAEK_BLACK: Color = Color::from_hex(0xff181425);
 
 	let options = WindowOptions {
 		borderless: true,
@@ -89,6 +89,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 	let mut next_direction = snake_game.direction();
 
 	let mut debug = false;
+	let mut show_game_over = false;
 
 	let start = Instant::now();
 
@@ -308,10 +309,12 @@ fn game() -> Result<(), Box<dyn Error>> {
 						draw_snake_game(
 							&snake_game,
 							&mut ui,
+							&renderer,
 							snake_container.id(),
 							snaek_sheet_id,
 							&snaek_sheet,
 							debug,
+							&mut show_game_over,
 						);
 					}
 					ui.add_child(playfield.id(), snake_container.id());
@@ -326,9 +329,15 @@ fn game() -> Result<(), Box<dyn Error>> {
 		ui.react(&mouse);
 
 		if frame_count % (60 / 3) == 0 {
+			let was_dead = snake_game.is_dead();
+
 			snake_game.change_direction(next_direction);
 			snake_game.update();
 			next_direction = snake_game.direction();
+
+			if snake_game.is_dead() && !was_dead {
+				show_game_over = true;
+			}
 		}
 
 		renderer.draw(&draw_cmds);
@@ -346,10 +355,12 @@ fn game() -> Result<(), Box<dyn Error>> {
 fn draw_snake_game(
 	snake_game: &SnakeGame,
 	ui: &mut UiContext,
+	renderer: &Renderer,
 	container_id: WidgetId,
 	snaek_sheet_id: SpritesheetId,
 	snaek_sheet: &SnaekSheet,
 	debug: bool,
+	show_game_over: &mut bool,
 ) {
 	let playfield_size = snake_game.size();
 	for y in 0..playfield_size.h as i16 {
@@ -480,5 +491,46 @@ fn draw_snake_game(
 			}
 			ui.add_child(container_id, sprite_holder.id());
 		}
+	}
+
+	if *show_game_over {
+		let game_over_overlay = ui.build_widget(
+			WidgetProps::new(wk!())
+				.with_flags(WidgetFlags::DRAW_BACKGROUND)
+				.with_color(Color::from_hex(0x80ffffff & SNAEK_BLACK.to_u32()))
+				.with_size(WidgetSize::fill()),
+		);
+		{
+			let column = ui.build_widget(
+				WidgetProps::new(wk!())
+					.with_size(WidgetSize::hug())
+					.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
+					.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 4)),
+			);
+			{
+				let game_over_text = ui.build_widget(WidgetProps::text(wk!(), renderer.text("Game Over! :(")));
+				ui.add_child(column.id(), game_over_text.id());
+
+				let oh_text =
+					ui.build_widget(WidgetProps::text(wk!(), renderer.text("Oh")).with_mask_and(Some(SNAEK_BLACK)));
+
+				let oh_btn = ui.btn_box(
+					WidgetProps::new(wk!())
+						.with_size(WidgetSize::hug())
+						.with_anchor_origin(Anchor::TOP_CENTER, Anchor::TOP_CENTER)
+						.with_padding(WidgetPadding::hv(4, 2)),
+					WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
+					WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
+					oh_text.id(),
+				);
+				ui.add_child(column.id(), oh_btn.id());
+
+				if oh_btn.clicked() {
+					*show_game_over = false;
+				}
+			}
+			ui.add_child(game_over_overlay.id(), column.id());
+		}
+		ui.add_child(container_id, game_over_overlay.id());
 	}
 }
