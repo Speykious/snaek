@@ -156,8 +156,20 @@ fn game() -> Result<(), Box<dyn Error>> {
 				);
 				ui.add_child(navbar.id(), snaek_icon.id());
 
-				let menu = ui.build_widget(WidgetProps::new(wk!()).with_size(WidgetSize::fill()));
-				ui.add_child(navbar.id(), menu.id());
+				let filler = ui.build_widget(
+					WidgetProps::new(wk!())
+						.with_size(WidgetSize::fill())
+						.with_padding(WidgetPadding::hv(2, 1)),
+				);
+				{
+					let title = ui.build_widget(
+						WidgetProps::text(wk!(), renderer.text("Snaek"))
+							.with_anchor_origin(Anchor::BOTTOM_LEFT, Anchor::BOTTOM_LEFT)
+							.with_mask_and(Some(SNAEK_BLACK)),
+					);
+					ui.add_child(filler.id(), title.id());
+				}
+				ui.add_child(navbar.id(), filler.id());
 
 				let btn_close = ui.btn_icon(
 					WidgetProps::new(wk!()).with_size(WidgetSize::fixed(7, 7)),
