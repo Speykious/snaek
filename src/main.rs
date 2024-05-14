@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::time::Instant;
 
 use crate::snake::Direction;
 
@@ -87,8 +86,6 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 	let mut debug = false;
 	let mut show_game_over = false;
-
-	let start = Instant::now();
 
 	let mut draw_cmds = Vec::new();
 	let mut mouse = Mouse::default();
@@ -292,7 +289,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 
 						let time_display = ui.time_display(
 							wk!(),
-							start.elapsed(),
+							snake_game.duration(),
 							snaek_sheet_id,
 							snaek_sheet.box_num_display,
 							snaek_sheet.num_colon,
@@ -338,6 +335,7 @@ fn game() -> Result<(), Box<dyn Error>> {
 		ui.free_untouched_widgets();
 		ui.react(&mouse);
 
+		snake_game.update_duration();
 		if frame_count % (60 / 3) == 0 {
 			let was_dead = snake_game.is_dead();
 

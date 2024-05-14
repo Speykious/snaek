@@ -1,5 +1,7 @@
 pub mod snaeksheet;
 
+use std::time::{Duration, Instant};
+
 use rand::rngs::ThreadRng;
 use rand::Rng;
 pub use snaeksheet::{snaek_sheet, SnaekSheet};
@@ -57,6 +59,9 @@ pub struct SnakeGame {
 	bananas_eaten: u32,
 	direction: Direction,
 	is_dead: bool,
+
+	start: Instant,
+	duration: Duration,
 }
 
 impl SnakeGame {
@@ -76,6 +81,9 @@ impl SnakeGame {
 			bananas_eaten: 0,
 			direction: Direction::Right,
 			is_dead: false,
+
+			start: Instant::now(),
+			duration: Duration::default(),
 		};
 
 		game.restart();
@@ -90,6 +98,14 @@ impl SnakeGame {
 		}
 
 		self.direction = direction;
+	}
+
+	pub fn update_duration(&mut self) {
+		if self.is_dead {
+			return;
+		}
+
+		self.duration = self.start.elapsed();
 	}
 
 	pub fn update(&mut self) {
@@ -180,6 +196,8 @@ impl SnakeGame {
 		self.is_dead = false;
 
 		self.place_banana();
+		self.start = Instant::now();
+		self.duration = Duration::default();
 	}
 
 	fn place_banana(&mut self) {
@@ -218,6 +236,10 @@ impl SnakeGame {
 
 	pub fn direction(&self) -> Direction {
 		self.direction
+	}
+
+	pub fn duration(&self) -> Duration {
+		self.duration
 	}
 
 	#[inline]
