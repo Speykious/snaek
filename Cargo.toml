@@ -1,5 +1,6 @@
 [package]
 name = "snaek"
+description = "A snake game made almost entirely from scratch in Rust."
 version = "0.1.0"
 edition = "2021"
 
