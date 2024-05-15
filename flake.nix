@@ -1,5 +1,5 @@
 {
-  description = "Sneak";
+  description = "Snaek";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
   };
