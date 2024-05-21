@@ -19,6 +19,7 @@ pub mod layout;
 ///
 /// The root of all widgets, which is the window itself, has an ID of 0. So all top-level widgets have a `parent_id` of 0.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+// Uses NonZeroUsize to enable null pointer optimization with Option<...>. All accesses are offset by one.
 pub struct WidgetId(NonZeroUsize);
 
 /// A key that uniquely identifies a widget.
@@ -456,6 +457,7 @@ impl UiContext {
 	}
 
 	const fn id_from_index(index: usize) -> WidgetId {
+		// SAFETY: The system cannot access more memory than usize, therefore a usize bound to a number of items cannot overflow.
 		WidgetId(unsafe { NonZeroUsize::new_unchecked(index + 1) })
 	}
 
