@@ -20,7 +20,7 @@ use ui::{
 };
 
 use winit::application::ApplicationHandler;
-use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
+use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -56,6 +56,7 @@ const WIDTH: u16 = 97;
 const HEIGHT: u16 = 124;
 
 const SNAEK_PIXEL_SIZE: u32 = 4;
+
 const VIEWPORT_SIZE: Size = size(WIDTH, HEIGHT);
 const SNAEK_BLACK: Color = Color::from_hex(0xff181425);
 
@@ -90,6 +91,7 @@ struct App {
 	mouse: Mouse,
 	last_move: Instant,
 	window_size: PhysicalSize<u32>,
+	pixel_size: u32,
 
 	snaek_sheet_id: SpritesheetId,
 	snaek_sheet: SnaekSheet,
@@ -126,7 +128,8 @@ impl App {
 			draw_cmds: Vec::new(),
 			mouse: Mouse::default(),
 			last_move: Instant::now(),
-			window_size: PhysicalSize::new(WIDTH as u32 * SNAEK_PIXEL_SIZE, HEIGHT as u32 * SNAEK_PIXEL_SIZE),
+			window_size: PhysicalSize::default(),
+			pixel_size: SNAEK_PIXEL_SIZE,
 
 			snaek_sheet_id,
 			snaek_sheet: snake::snaek_sheet(),
@@ -141,11 +144,6 @@ impl App {
 
 impl ApplicationHandler for App {
 	fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-		let pxsz = SNAEK_PIXEL_SIZE as f64;
-
-		let win_size = winit::dpi::Size::Logical(LogicalSize::new(WIDTH as f64 * pxsz, HEIGHT as f64 * pxsz));
-		let inc_size = winit::dpi::Size::Logical(LogicalSize::new(pxsz, pxsz));
-
 		let win_attribs = WindowAttributes::default()
 			.with_active(true)
 			.with_transparent(false)
@@ -153,15 +151,26 @@ impl ApplicationHandler for App {
 			.with_theme(Some(Theme::Light))
 			.with_title("Snaek :3")
 			.with_window_icon(Some(self.icon.clone()))
-			.with_inner_size(win_size)
-			.with_min_inner_size(win_size)
-			.with_resizable(true)
-			.with_resize_increments(inc_size);
+			.with_resizable(true);
 
 		let win = Rc::new(event_loop.create_window(win_attribs).unwrap());
 
+		self.pixel_size = (SNAEK_PIXEL_SIZE as f64 * win.scale_factor()).round() as u32;
+
+		let viewport_size = PhysicalSize::new(WIDTH as u32 * self.pixel_size, HEIGHT as u32 * self.pixel_size);
+		let win_size = winit::dpi::Size::Physical(viewport_size);
+		let inc_size = winit::dpi::Size::Physical(PhysicalSize::new(self.pixel_size, self.pixel_size));
+
+		let _ = win.request_inner_size(win_size);
+		win.set_min_inner_size(Some(win_size));
+		win.set_resize_increments(Some(inc_size));
+
 		let context = softbuffer::Context::new(win.clone()).unwrap();
-		let surface = softbuffer::Surface::new(&context, win.clone()).unwrap();
+		let mut surface = softbuffer::Surface::new(&context, win.clone()).unwrap();
+
+		if let (Some(width), Some(height)) = (NonZero::new(viewport_size.width), NonZero::new(viewport_size.height)) {
+			surface.resize(width, height).unwrap();
+		}
 
 		self.surface = Some(surface);
 		self.window = Some(win);
@@ -185,8 +194,8 @@ impl ApplicationHandler for App {
 				position: PhysicalPosition { x, y },
 				..
 			} => {
-				self.mouse.x = x / SNAEK_PIXEL_SIZE as f64;
-				self.mouse.y = y / SNAEK_PIXEL_SIZE as f64;
+				self.mouse.x = x / self.pixel_size as f64;
+				self.mouse.y = y / self.pixel_size as f64;
 			}
 
 			WindowEvent::KeyboardInput {
@@ -209,7 +218,7 @@ impl ApplicationHandler for App {
 			WindowEvent::Resized(physical_size @ PhysicalSize { width, height }) => {
 				self.window_size = physical_size;
 
-				let viewport_size = size((width / SNAEK_PIXEL_SIZE) as u16, (height / SNAEK_PIXEL_SIZE) as u16);
+				let viewport_size = size((width / self.pixel_size) as u16, (height / self.pixel_size) as u16);
 
 				self.ui.resize(viewport_size);
 				self.renderer.resize(viewport_size);
@@ -267,7 +276,7 @@ impl ApplicationHandler for App {
 					}
 
 					let (width, height) = (self.window_size.width as usize, self.window_size.height as usize);
-					let pxsz = SNAEK_PIXEL_SIZE as usize;
+					let pxsz = self.pixel_size as usize;
 					for y in 0..height {
 						for x in 0..width {
 							let dst_index = y * width + x;
