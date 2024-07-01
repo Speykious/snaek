@@ -473,7 +473,7 @@ fn snaek_ui(app: &mut App, window: &Window) -> bool {
 					{
 						let text = ui.build_widget(
 							WidgetProps::text(wk!(), renderer.text("Speykious"))
-								.with_anchor_origin(Anchor::BOTTOM_LEFT, Anchor::BOTTOM_LEFT)
+								.with_anchor_origin(Anchor::BOTTOM_RIGHT, Anchor::BOTTOM_RIGHT)
 								.with_mask_and(Some(SNAEK_BLACK)),
 						);
 						ui.add_child(text_holder.id(), text.id());
@@ -494,35 +494,40 @@ fn snaek_ui(app: &mut App, window: &Window) -> bool {
 			}
 			ui.add_child(game_frame.id(), display_frame.id());
 
-			let playfield = ui.build_widget(
-				WidgetProps::nine_slice_sprite(wk!(), snaek_sheet_id, snaek_sheet.box_playfield)
-					.with_size(WidgetSize::hug())
-					.with_padding(WidgetPadding::all(4)),
-			);
+			let playfield_frame = ui.build_widget(WidgetProps::new(wk!()).with_size(WidgetSize::fill()));
 			{
-				let container_size = snake_game.size() * 7;
-
-				let snake_container = ui.build_widget(
-					WidgetProps::new(wk!())
-						.with_flags(WidgetFlags::DRAW_BACKGROUND)
-						.with_color(Color::from_hex(0xff262b44))
-						.with_size(WidgetSize::fixed(container_size.w, container_size.h)),
+				let playfield = ui.build_widget(
+					WidgetProps::nine_slice_sprite(wk!(), snaek_sheet_id, snaek_sheet.box_playfield)
+						.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
+						.with_size(WidgetSize::hug())
+						.with_padding(WidgetPadding::all(4)),
 				);
 				{
-					snaek_playfield(
-						snake_game,
-						ui,
-						renderer,
-						snake_container.id(),
-						snaek_sheet_id,
-						snaek_sheet,
-						*debug,
-						show_game_over,
+					let container_size = snake_game.size() * 7;
+
+					let snake_container = ui.build_widget(
+						WidgetProps::new(wk!())
+							.with_flags(WidgetFlags::DRAW_BACKGROUND)
+							.with_color(Color::from_hex(0xff262b44))
+							.with_size(WidgetSize::fixed(container_size.w, container_size.h)),
 					);
+					{
+						snaek_playfield(
+							snake_game,
+							ui,
+							renderer,
+							snake_container.id(),
+							snaek_sheet_id,
+							snaek_sheet,
+							*debug,
+							show_game_over,
+						);
+					}
+					ui.add_child(playfield.id(), snake_container.id());
 				}
-				ui.add_child(playfield.id(), snake_container.id());
+				ui.add_child(playfield_frame.id(), playfield.id());
 			}
-			ui.add_child(game_frame.id(), playfield.id());
+			ui.add_child(game_frame.id(), playfield_frame.id());
 		}
 		ui.add_child(window_frame.id(), game_frame.id());
 	}

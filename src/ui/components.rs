@@ -144,6 +144,7 @@ impl UiContext {
 		let display = self.build_widget(
 			WidgetProps::nine_slice_sprite(key, sheet_id, display_box)
 				.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 1))
+				.with_anchor_origin(Anchor::TOP_RIGHT, Anchor::TOP_RIGHT)
 				.with_padding(WidgetPadding::all(2)),
 		);
 
