@@ -39,8 +39,8 @@ impl Rect {
 		Size { w: self.w, h: self.h }
 	}
 
-	pub fn contains(&self, px: f32, py: f32) -> bool {
-		((self.x as f32) <= px && px < (self.x as f32 + self.w as f32))
-			&& ((self.y as f32) <= py && py < (self.y as f32 + self.h as f32))
+	pub fn contains(&self, px: f64, py: f64) -> bool {
+		((self.x as f64) <= px && px < (self.x as f64 + self.w as f64))
+			&& ((self.y as f64) <= py && py < (self.y as f64 + self.h as f64))
 	}
 }

@@ -69,13 +69,17 @@ pub struct Renderer {
 }
 
 impl Renderer {
-	pub fn new(framebuffer: Bitmap, ascii_bitmap: Bitmap) -> Self {
+	pub fn new(size: Size, ascii_bitmap: Bitmap) -> Self {
 		Self {
-			fb_stack: FramebufferStack::new(framebuffer),
+			fb_stack: FramebufferStack::new(Bitmap::new(size)),
 			ascii_bitmap,
 			ascii_sheet: ascii_sheet(),
 			spritesheets: Vec::new(),
 		}
+	}
+
+	pub fn resize(&mut self, size: Size) {
+		self.fb_stack = FramebufferStack::new(Bitmap::new(size));
 	}
 
 	pub fn register_spritesheet(&mut self, sheet: Bitmap) -> SpritesheetId {

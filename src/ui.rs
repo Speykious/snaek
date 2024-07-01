@@ -94,6 +94,7 @@ pub struct Widget {
 
 	hovered: bool,
 	pressed: bool,
+	start_pressed: bool,
 	clicked: bool,
 
 	// Layout state calculated each frame
@@ -106,6 +107,7 @@ pub struct WidgetReaction {
 	id: WidgetId,
 	hovered: bool,
 	pressed: bool,
+	start_pressed: bool,
 	clicked: bool,
 }
 
@@ -123,6 +125,11 @@ impl WidgetReaction {
 	#[inline]
 	pub const fn pressed(&self) -> bool {
 		self.pressed
+	}
+
+	#[inline]
+	pub const fn start_pressed(&self) -> bool {
+		self.start_pressed
 	}
 
 	#[inline]
@@ -468,6 +475,10 @@ impl UiContext {
 		}
 	}
 
+	pub fn resize(&mut self, viewport_size: Size) {
+		self.viewport_size = viewport_size;
+	}
+
 	pub fn build_widget(&mut self, props: WidgetProps) -> WidgetReaction {
 		match self.keys.get(&props.key) {
 			Some(&id) => {
@@ -500,6 +511,7 @@ impl UiContext {
 					id,
 					hovered: widget.hovered,
 					pressed: widget.pressed,
+					start_pressed: widget.start_pressed,
 					clicked: widget.clicked,
 				}
 			}
@@ -521,6 +533,7 @@ impl UiContext {
 
 					hovered: false,
 					pressed: false,
+					start_pressed: false,
 					clicked: false,
 
 					solved_rect: Rect::ZERO,
@@ -531,6 +544,7 @@ impl UiContext {
 					id,
 					hovered: false,
 					pressed: false,
+					start_pressed: false,
 					clicked: false,
 				}
 			}
@@ -708,6 +722,7 @@ impl UiContext {
 				true => mouse.l_pressed_start() || (mouse.l_pressed() && pressed_prev),
 				false => mouse.l_pressed() && pressed_prev,
 			};
+		widget.start_pressed = widget.pressed && !pressed_prev;
 		widget.clicked = can_click && hovered && mouse.l_pressed_end() && pressed_prev;
 
 		widget.hovered
@@ -729,8 +744,8 @@ impl UiContext {
 
 #[derive(Debug, Clone, Default)]
 pub struct Mouse {
-	pub x: f32,
-	pub y: f32,
+	pub x: f64,
+	pub y: f64,
 	pub l_pressed: (bool, bool),
 	pub r_pressed: (bool, bool),
 	pub m_pressed: (bool, bool),

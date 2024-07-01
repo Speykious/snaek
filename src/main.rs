@@ -1,4 +1,7 @@
 use std::error::Error;
+use std::num::NonZero;
+use std::rc::Rc;
+use std::time::Instant;
 
 use crate::snake::Direction;
 
@@ -8,7 +11,6 @@ use self::render::bitmap::Bitmap;
 use self::render::color::{alphacomp, Color};
 use image::{ImageFormat, ImageResult};
 use math::size::Size;
-use minifb::{Key, KeyRepeat, MouseButton, MouseMode, Scale, ScaleMode, Window, WindowOptions};
 use owo_colors::OwoColorize;
 use render::{DrawCommand, Renderer, Rotate, SpritesheetId};
 use snake::{Banana, SnaekSheet, SnakeGame};
@@ -17,25 +19,19 @@ use ui::{
 	WidgetProps, WidgetSize, WidgetSprite,
 };
 
+use winit::application::ApplicationHandler;
+use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
+use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::window::{CursorIcon, Icon, Theme, Window, WindowAttributes, WindowId};
+
 mod math;
 mod render;
 mod snake;
 mod ui;
 
-const WIDTH: u16 = 97;
-const HEIGHT: u16 = 124;
-
-fn main() {
-	eprintln!("{}", "Snaek!!".yellow());
-
-	match game() {
-		Ok(_) => eprintln!("{}", "See you next time :)".green()),
-		Err(e) => {
-			eprintln!("{}", "The game crashed! D:".red());
-			eprintln!("-> {}", e);
-		}
-	}
-}
+const SNAEK_APP_ICON: &[u8] = include_bytes!("../assets/icon.png");
 
 const IMG_ASCII_CHARS: &[u8] = include_bytes!("../assets/ascii-chars.png");
 const IMG_SNAEKSHEET: &[u8] = include_bytes!("../assets/snaeksheet.png");
@@ -56,312 +52,472 @@ fn load_png_from_memory(png: &[u8]) -> ImageResult<Bitmap> {
 	Ok(Bitmap::from_buffer(buffer, size))
 }
 
-const VIEWPORT_SIZE: Size = size(WIDTH, HEIGHT);
+const WIDTH: u16 = 97;
+const HEIGHT: u16 = 124;
 
+const SNAEK_PIXEL_SIZE: u32 = 4;
+const VIEWPORT_SIZE: Size = size(WIDTH, HEIGHT);
 const SNAEK_BLACK: Color = Color::from_hex(0xff181425);
 
-fn game() -> Result<(), Box<dyn Error>> {
-	let ascii_bitmap = load_png_from_memory(IMG_ASCII_CHARS)?;
+fn main() {
+	eprintln!("{}", "Snaek!!".yellow());
 
-	let mut renderer = Renderer::new(Bitmap::new(VIEWPORT_SIZE), ascii_bitmap);
-	let mut ui = UiContext::new(VIEWPORT_SIZE);
+	let event_loop = EventLoop::new().unwrap();
+	event_loop.set_control_flow(ControlFlow::Poll);
 
-	let snaek_sheet_id = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
-	let snaek_sheet = snake::snaek_sheet();
-
-	let options = WindowOptions {
-		borderless: true,
-		title: true,
-		resize: false,
-		scale: Scale::X4,
-		scale_mode: ScaleMode::Stretch,
-		..Default::default()
+	let mut app = match App::new() {
+		Ok(app) => app,
+		Err(e) => {
+			eprintln!("{}", "The game crashed! D:".red());
+			eprintln!("-> {}", e);
+			std::process::exit(1);
+		}
 	};
 
-	let mut window = Window::new("Snaek", WIDTH as usize, HEIGHT as usize, options)?;
-	window.set_target_fps(60);
+	event_loop.run_app(&mut app).unwrap();
 
-	let mut snake_game = SnakeGame::new(size(11, 11));
-	let mut next_direction = snake_game.direction();
+	eprintln!("{}", "See you next time :)".green())
+}
 
-	let mut debug = false;
-	let mut show_game_over = false;
+struct App {
+	window: Option<Rc<Window>>,
+	surface: Option<softbuffer::Surface<Rc<Window>, Rc<Window>>>,
+	icon: Icon,
 
-	let mut draw_cmds = Vec::new();
-	let mut mouse = Mouse::default();
-	let mut unscaled_mouse_pos = None;
+	ui: UiContext,
+	renderer: Renderer,
+	draw_cmds: Vec<DrawCommand>,
+	mouse: Mouse,
+	last_move: Instant,
+	window_size: PhysicalSize<u32>,
 
-	let mut frame_count: u64 = 0;
+	snaek_sheet_id: SpritesheetId,
+	snaek_sheet: SnaekSheet,
+	snake_game: SnakeGame,
 
-	'game_loop: while window.is_open() {
-		// input handling
-		if window.is_key_down(Key::Escape) {
-			break;
-		}
+	debug: bool,
+	show_game_over: bool,
+	next_direction: Direction,
+}
 
-		if let Some(next_pos) = window.get_mouse_pos(MouseMode::Discard) {
-			mouse.x = next_pos.0;
-			mouse.y = next_pos.1;
-		}
+impl App {
+	fn new() -> Result<Self, Box<dyn Error>> {
+		let icon = {
+			let icon_image = image::load_from_memory_with_format(SNAEK_APP_ICON, ImageFormat::Png)?;
+			let (icon_width, icon_height) = (icon_image.width(), icon_image.height());
+			Icon::from_rgba(icon_image.into_rgba8().into_vec(), icon_width, icon_height)?
+		};
 
-		mouse.l_pressed = (window.get_mouse_down(MouseButton::Left), mouse.l_pressed.0);
-		mouse.r_pressed = (window.get_mouse_down(MouseButton::Right), mouse.r_pressed.0);
-		mouse.m_pressed = (window.get_mouse_down(MouseButton::Middle), mouse.m_pressed.0);
+		let ascii_bitmap = load_png_from_memory(IMG_ASCII_CHARS)?;
 
-		// snake input
-		if window.is_key_pressed(Key::Up, KeyRepeat::No) || window.is_key_pressed(Key::W, KeyRepeat::No) {
-			next_direction = Direction::Up;
-		} else if window.is_key_pressed(Key::Right, KeyRepeat::No) || window.is_key_pressed(Key::D, KeyRepeat::No) {
-			next_direction = Direction::Right;
-		} else if window.is_key_pressed(Key::Down, KeyRepeat::No) || window.is_key_pressed(Key::S, KeyRepeat::No) {
-			next_direction = Direction::Down;
-		} else if window.is_key_pressed(Key::Left, KeyRepeat::No) || window.is_key_pressed(Key::A, KeyRepeat::No) {
-			next_direction = Direction::Left;
-		}
+		let mut renderer = Renderer::new(VIEWPORT_SIZE, ascii_bitmap);
+		let snaek_sheet_id = renderer.register_spritesheet(load_png_from_memory(IMG_SNAEKSHEET)?);
 
-		draw_cmds.clear();
-		draw_cmds.push(DrawCommand::Clear);
+		let snake_game = SnakeGame::new(size(11, 11));
+		let next_direction = snake_game.direction();
 
-		// UI
-		let window_frame = ui.build_widget(
-			WidgetProps::new(wk!())
-				.with_flags(WidgetFlags::DRAW_BACKGROUND | WidgetFlags::DRAW_BORDER)
-				.with_color(Color::from_hex(0xffc0cbdc))
-				.with_border_color(Color::from_hex(0xff181425))
-				.with_border_width(1)
-				.with_acf(Some(alphacomp::dst))
-				.with_size(WidgetSize::fill())
-				.with_padding(WidgetPadding::all(1))
-				.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 0)),
-		);
-		{
-			let navbar = ui.build_widget(
-				WidgetProps::new(wk!())
-					.with_flags(WidgetFlags::CAN_CLICK)
-					.with_size(WidgetSize::new(WidgetDim::Fill, WidgetDim::Fixed(8)))
-					.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 0)),
-			);
-			{
-				let snaek_icon = ui.build_widget(
-					WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.snaek_icon)
-						.with_size(WidgetSize::fixed(8, 8))
-						.with_draw_offset(pos(1, 1))
-						.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 0)),
-				);
-				ui.add_child(navbar.id(), snaek_icon.id());
+		Ok(Self {
+			window: None,
+			surface: None,
+			icon,
 
-				let filler = ui.build_widget(
-					WidgetProps::new(wk!())
-						.with_size(WidgetSize::fill())
-						.with_padding(WidgetPadding::hv(2, 1)),
-				);
-				{
-					let title = ui.build_widget(
-						WidgetProps::text(wk!(), renderer.text("Snaek"))
-							.with_anchor_origin(Anchor::BOTTOM_LEFT, Anchor::BOTTOM_LEFT)
-							.with_mask_and(Some(SNAEK_BLACK)),
-					);
-					ui.add_child(filler.id(), title.id());
-				}
-				ui.add_child(navbar.id(), filler.id());
+			ui: UiContext::new(VIEWPORT_SIZE),
+			renderer,
+			draw_cmds: Vec::new(),
+			mouse: Mouse::default(),
+			last_move: Instant::now(),
+			window_size: PhysicalSize::new(WIDTH as u32 * SNAEK_PIXEL_SIZE, HEIGHT as u32 * SNAEK_PIXEL_SIZE),
 
-				let btn_close = ui.btn_icon(
-					WidgetProps::new(wk!()).with_size(WidgetSize::fixed(7, 7)),
-					WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.icon_close)
-						.with_mask_and(Some(SNAEK_BLACK)),
-					Color::from_hex(0xffe43b44),
-				);
-				ui.add_child(navbar.id(), btn_close.id());
+			snaek_sheet_id,
+			snaek_sheet: snake::snaek_sheet(),
+			snake_game,
 
-				if btn_close.clicked() {
-					break 'game_loop;
-				}
-			}
-			ui.add_child(window_frame.id(), navbar.id());
+			debug: false,
+			show_game_over: false,
+			next_direction,
+		})
+	}
+}
 
-			if navbar.pressed() {
-				let (cpx, cpy) = window.get_unscaled_mouse_pos(MouseMode::Pass).unwrap_or_default();
-				let (mpx, mpy) = unscaled_mouse_pos.unwrap_or((cpx, cpy));
+impl ApplicationHandler for App {
+	fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+		let pxsz = SNAEK_PIXEL_SIZE as f64;
 
-				let (wpx, wpy) = window.get_position();
-				window.set_position(wpx + (cpx - mpx).round() as isize, wpy + (cpy - mpy).round() as isize);
+		let win_size = winit::dpi::Size::Logical(LogicalSize::new(WIDTH as f64 * pxsz, HEIGHT as f64 * pxsz));
+		let inc_size = winit::dpi::Size::Logical(LogicalSize::new(pxsz, pxsz));
 
-				unscaled_mouse_pos = Some((mpx, mpy));
-			} else {
-				unscaled_mouse_pos = None;
-			}
+		let win_attribs = WindowAttributes::default()
+			.with_active(true)
+			.with_transparent(false)
+			.with_decorations(false)
+			.with_theme(Some(Theme::Light))
+			.with_title("Snaek :3")
+			.with_window_icon(Some(self.icon.clone()))
+			.with_inner_size(win_size)
+			.with_min_inner_size(win_size)
+			.with_resizable(true)
+			.with_resize_increments(inc_size);
 
-			let game_frame = ui.build_widget(
-				WidgetProps::nine_slice_sprite(wk!(), snaek_sheet_id, snaek_sheet.box_embossed)
-					.with_acf(Some(alphacomp::dst))
-					.with_size(WidgetSize::fill())
-					.with_padding(WidgetPadding::trbl(4, 5, 5, 5))
-					.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
-			);
-			{
-				let display_frame = ui.build_widget(
-					WidgetProps::new(wk!())
-						.with_size(WidgetSize::new(WidgetDim::Fill, WidgetDim::Hug))
-						.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 3)),
-				);
-				{
-					let big_display = ui.big_3digits_display(
-						wk!(),
-						snake_game.bananas_eaten() as usize,
-						snaek_sheet_id,
-						snaek_sheet.box_num_display,
-						snaek_sheet.bignum_placeholder,
-						&snaek_sheet.bignums,
-					);
-					ui.add_child(display_frame.id(), big_display.id());
+		let win = Rc::new(event_loop.create_window(win_attribs).unwrap());
 
-					let middle_frame = ui.build_widget(
-						WidgetProps::new(wk!())
-							.with_size(WidgetSize::hug())
-							.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
-					);
-					{
-						let icon_restart = ui.build_widget(
-							WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.icon_restart)
-								.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
-								.with_acf(Some(alphacomp::xor)),
-						);
-						let btn_restart = ui.btn_box(
-							WidgetProps::new(wk!())
-								.with_size(WidgetSize::hug())
-								.with_padding(WidgetPadding::hv(3, 2)),
-							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
-							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
-							icon_restart.id(),
-						);
-						ui.add_child(middle_frame.id(), btn_restart.id());
+		let context = softbuffer::Context::new(win.clone()).unwrap();
+		let surface = softbuffer::Surface::new(&context, win.clone()).unwrap();
 
-						if btn_restart.clicked() {
-							snake_game.restart();
-							show_game_over = false;
-							next_direction = snake_game.direction();
-						}
-
-						let icon_playpause = {
-							let sprite = match debug {
-								true => snaek_sheet.icon_play,
-								false => snaek_sheet.icon_debug,
-							};
-
-							ui.build_widget(
-								WidgetProps::simple_sprite(wk!(), snaek_sheet_id, sprite)
-									.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
-									.with_acf(Some(alphacomp::xor)),
-							)
-						};
-						let btn_playdebug = ui.btn_box(
-							WidgetProps::new(wk!())
-								.with_size(WidgetSize::hug())
-								.with_padding(WidgetPadding::hv(3, 2)),
-							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
-							WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
-							icon_playpause.id(),
-						);
-						ui.add_child(middle_frame.id(), btn_playdebug.id());
-
-						if btn_playdebug.clicked() {
-							debug = !debug;
-						}
-					}
-					ui.add_child(display_frame.id(), middle_frame.id());
-
-					let right_frame = ui.build_widget(
-						WidgetProps::new(wk!())
-							.with_size(WidgetSize::fill())
-							.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
-					);
-					{
-						let text_holder = ui.build_widget(WidgetProps::new(wk!()).with_size(WidgetSize::fill()));
-						{
-							let text = ui.build_widget(
-								WidgetProps::text(wk!(), renderer.text("Speykious"))
-									.with_anchor_origin(Anchor::BOTTOM_LEFT, Anchor::BOTTOM_LEFT)
-									.with_mask_and(Some(SNAEK_BLACK)),
-							);
-							ui.add_child(text_holder.id(), text.id());
-						}
-						ui.add_child(right_frame.id(), text_holder.id());
-
-						let time_display = ui.time_display(
-							wk!(),
-							snake_game.duration(),
-							snaek_sheet_id,
-							snaek_sheet.box_num_display,
-							snaek_sheet.num_colon,
-							&snaek_sheet.nums,
-						);
-						ui.add_child(right_frame.id(), time_display.id());
-					}
-					ui.add_child(display_frame.id(), right_frame.id());
-				}
-				ui.add_child(game_frame.id(), display_frame.id());
-
-				let playfield = ui.build_widget(
-					WidgetProps::nine_slice_sprite(wk!(), snaek_sheet_id, snaek_sheet.box_playfield)
-						.with_size(WidgetSize::fill())
-						.with_padding(WidgetPadding::all(4)),
-				);
-				{
-					let snake_container = ui.build_widget(
-						WidgetProps::new(wk!())
-							.with_flags(WidgetFlags::DRAW_BACKGROUND)
-							.with_color(Color::from_hex(0xff262b44)),
-					);
-					{
-						draw_snake_game(
-							&snake_game,
-							&mut ui,
-							&renderer,
-							snake_container.id(),
-							snaek_sheet_id,
-							&snaek_sheet,
-							debug,
-							&mut show_game_over,
-						);
-					}
-					ui.add_child(playfield.id(), snake_container.id());
-				}
-				ui.add_child(game_frame.id(), playfield.id());
-			}
-			ui.add_child(window_frame.id(), game_frame.id());
-		}
-		ui.solve_layout();
-		ui.draw_widgets(&mut draw_cmds);
-		ui.free_untouched_widgets();
-		ui.react(&mouse);
-
-		snake_game.update_duration();
-		if frame_count % (60 / 3) == 0 {
-			let was_dead = snake_game.is_dead();
-
-			snake_game.change_direction(next_direction);
-			snake_game.update();
-			next_direction = snake_game.direction();
-
-			if snake_game.is_dead() && !was_dead {
-				show_game_over = true;
-			}
-		}
-
-		renderer.draw(&draw_cmds);
-
-		window
-			.update_with_buffer(renderer.first_framebuffer().pixels(), WIDTH as usize, HEIGHT as usize)
-			.unwrap();
-
-		frame_count += 1;
+		self.surface = Some(surface);
+		self.window = Some(win);
 	}
 
-	Ok(())
+	fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+		match event {
+			WindowEvent::CloseRequested => {
+				event_loop.exit();
+			}
+
+			WindowEvent::MouseInput { state, button, .. } => {
+				use MouseButton as M;
+
+				self.mouse.l_pressed = (state.is_pressed() && button == M::Left, self.mouse.l_pressed.0);
+				self.mouse.r_pressed = (state.is_pressed() && button == M::Right, self.mouse.r_pressed.0);
+				self.mouse.m_pressed = (state.is_pressed() && button == M::Middle, self.mouse.m_pressed.0);
+			}
+
+			WindowEvent::CursorMoved {
+				position: PhysicalPosition { x, y },
+				..
+			} => {
+				self.mouse.x = x / SNAEK_PIXEL_SIZE as f64;
+				self.mouse.y = y / SNAEK_PIXEL_SIZE as f64;
+			}
+
+			WindowEvent::KeyboardInput {
+				event:
+					KeyEvent {
+						physical_key: PhysicalKey::Code(key_code),
+						state: ElementState::Pressed,
+						repeat: false,
+						..
+					},
+				..
+			} => match key_code {
+				KeyCode::ArrowUp | KeyCode::KeyW => self.next_direction = Direction::Up,
+				KeyCode::ArrowRight | KeyCode::KeyD => self.next_direction = Direction::Right,
+				KeyCode::ArrowDown | KeyCode::KeyS => self.next_direction = Direction::Down,
+				KeyCode::ArrowLeft | KeyCode::KeyA => self.next_direction = Direction::Left,
+				_ => {}
+			},
+
+			WindowEvent::Resized(physical_size @ PhysicalSize { width, height }) => {
+				self.window_size = physical_size;
+
+				let viewport_size = size((width / SNAEK_PIXEL_SIZE) as u16, (height / SNAEK_PIXEL_SIZE) as u16);
+
+				self.ui.resize(viewport_size);
+				self.renderer.resize(viewport_size);
+
+				if let Some(surface) = &mut self.surface {
+					if let (Some(width), Some(height)) = (NonZero::new(width), NonZero::new(height)) {
+						surface.resize(width, height).unwrap();
+					}
+				}
+			}
+
+			WindowEvent::RedrawRequested => {
+				let Some(window) = self.window.as_ref().cloned() else {
+					return;
+				};
+
+				self.draw_cmds.clear();
+				self.draw_cmds.push(DrawCommand::Clear);
+
+				if snaek_ui(self, window.as_ref()) {
+					event_loop.exit();
+				}
+
+				self.ui.solve_layout();
+				self.ui.draw_widgets(&mut self.draw_cmds);
+				self.ui.free_untouched_widgets();
+				self.ui.react(&self.mouse);
+
+				let now = Instant::now();
+				self.snake_game.update_duration();
+
+				if (now - self.last_move).as_secs_f64() >= 0.3 {
+					let was_dead = self.snake_game.is_dead();
+
+					self.snake_game.change_direction(self.next_direction);
+					self.snake_game.update();
+					self.next_direction = self.snake_game.direction();
+
+					if self.snake_game.is_dead() && !was_dead {
+						self.show_game_over = true;
+					}
+
+					self.last_move = now;
+				}
+
+				self.renderer.draw(&self.draw_cmds);
+
+				if let Some(surface) = &mut self.surface {
+					let fb = self.renderer.first_framebuffer().pixels();
+
+					let mut buffer = surface.buffer_mut().unwrap();
+
+					if buffer.is_empty() {
+						return;
+					}
+
+					let (width, height) = (self.window_size.width as usize, self.window_size.height as usize);
+					let pxsz = SNAEK_PIXEL_SIZE as usize;
+					for y in 0..height {
+						for x in 0..width {
+							let dst_index = y * width + x;
+							let src_index = (y / pxsz) * (width / pxsz) + (x / pxsz);
+							buffer[dst_index] = fb[src_index];
+						}
+					}
+
+					buffer.present().unwrap();
+				}
+
+				window.request_redraw();
+			}
+			_ => (),
+		}
+	}
+}
+
+fn snaek_ui(app: &mut App, window: &Window) -> bool {
+	let mut cursor_icon = CursorIcon::Default;
+
+	let App {
+		ui,
+		renderer,
+		snaek_sheet_id,
+		snaek_sheet,
+		snake_game,
+		debug,
+		show_game_over,
+		next_direction,
+		..
+	} = app;
+
+	let snaek_sheet_id = *snaek_sheet_id;
+
+	// UI
+	let window_frame = ui.build_widget(
+		WidgetProps::new(wk!())
+			.with_flags(WidgetFlags::DRAW_BACKGROUND | WidgetFlags::DRAW_BORDER)
+			.with_color(Color::from_hex(0xffc0cbdc))
+			.with_border_color(Color::from_hex(0xff181425))
+			.with_border_width(1)
+			.with_acf(Some(alphacomp::dst))
+			.with_size(WidgetSize::fill())
+			.with_padding(WidgetPadding::all(1))
+			.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 0)),
+	);
+	{
+		let navbar = ui.build_widget(
+			WidgetProps::new(wk!())
+				.with_flags(WidgetFlags::CAN_HOVER | WidgetFlags::CAN_CLICK)
+				.with_size(WidgetSize::new(WidgetDim::Fill, WidgetDim::Fixed(8)))
+				.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 0)),
+		);
+		{
+			let snaek_icon = ui.build_widget(
+				WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.snaek_icon)
+					.with_size(WidgetSize::fixed(8, 8))
+					.with_draw_offset(pos(1, 1))
+					.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 0)),
+			);
+			ui.add_child(navbar.id(), snaek_icon.id());
+
+			let filler = ui.build_widget(
+				WidgetProps::new(wk!())
+					.with_size(WidgetSize::fill())
+					.with_padding(WidgetPadding::hv(2, 1)),
+			);
+			{
+				let title = ui.build_widget(
+					WidgetProps::text(wk!(), renderer.text("Snaek"))
+						.with_anchor_origin(Anchor::BOTTOM_LEFT, Anchor::BOTTOM_LEFT)
+						.with_mask_and(Some(SNAEK_BLACK)),
+				);
+				ui.add_child(filler.id(), title.id());
+			}
+			ui.add_child(navbar.id(), filler.id());
+
+			let btn_close = ui.btn_icon(
+				WidgetProps::new(wk!()).with_size(WidgetSize::fixed(7, 7)),
+				WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.icon_close)
+					.with_mask_and(Some(SNAEK_BLACK)),
+				Color::from_hex(0xffe43b44),
+			);
+			ui.add_child(navbar.id(), btn_close.id());
+
+			if btn_close.clicked() {
+				return true;
+			}
+		}
+		ui.add_child(window_frame.id(), navbar.id());
+
+		if navbar.hovered() {
+			cursor_icon = CursorIcon::Grab;
+		}
+
+		if navbar.start_pressed() {
+			cursor_icon = CursorIcon::Grabbing;
+			window.drag_window().unwrap();
+		}
+
+		let game_frame = ui.build_widget(
+			WidgetProps::nine_slice_sprite(wk!(), snaek_sheet_id, snaek_sheet.box_embossed)
+				.with_acf(Some(alphacomp::dst))
+				.with_size(WidgetSize::fill())
+				.with_padding(WidgetPadding::trbl(4, 5, 5, 5))
+				.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
+		);
+		{
+			let display_frame = ui.build_widget(
+				WidgetProps::new(wk!())
+					.with_size(WidgetSize::new(WidgetDim::Fill, WidgetDim::Hug))
+					.with_layout(WidgetLayout::flex(FlexDirection::Horizontal, 3)),
+			);
+			{
+				let big_display = ui.big_3digits_display(
+					wk!(),
+					snake_game.bananas_eaten() as usize,
+					snaek_sheet_id,
+					snaek_sheet.box_num_display,
+					snaek_sheet.bignum_placeholder,
+					&snaek_sheet.bignums,
+				);
+				ui.add_child(display_frame.id(), big_display.id());
+
+				let middle_frame = ui.build_widget(
+					WidgetProps::new(wk!())
+						.with_size(WidgetSize::hug())
+						.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
+				);
+				{
+					let icon_restart = ui.build_widget(
+						WidgetProps::simple_sprite(wk!(), snaek_sheet_id, snaek_sheet.icon_restart)
+							.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
+							.with_acf(Some(alphacomp::xor)),
+					);
+					let btn_restart = ui.btn_box(
+						WidgetProps::new(wk!())
+							.with_size(WidgetSize::hug())
+							.with_padding(WidgetPadding::hv(3, 2)),
+						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
+						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
+						icon_restart.id(),
+					);
+					ui.add_child(middle_frame.id(), btn_restart.id());
+
+					if btn_restart.clicked() {
+						snake_game.restart();
+						*show_game_over = false;
+						*next_direction = snake_game.direction();
+					}
+
+					let icon_playpause = {
+						let sprite = match debug {
+							true => snaek_sheet.icon_play,
+							false => snaek_sheet.icon_debug,
+						};
+
+						ui.build_widget(
+							WidgetProps::simple_sprite(wk!(), snaek_sheet_id, sprite)
+								.with_anchor_origin(Anchor::CENTER, Anchor::CENTER)
+								.with_acf(Some(alphacomp::xor)),
+						)
+					};
+					let btn_playdebug = ui.btn_box(
+						WidgetProps::new(wk!())
+							.with_size(WidgetSize::hug())
+							.with_padding(WidgetPadding::hv(3, 2)),
+						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_embossed),
+						WidgetSprite::NineSlice(snaek_sheet_id, snaek_sheet.box_carved),
+						icon_playpause.id(),
+					);
+					ui.add_child(middle_frame.id(), btn_playdebug.id());
+
+					if btn_playdebug.clicked() {
+						*debug = !*debug;
+					}
+				}
+				ui.add_child(display_frame.id(), middle_frame.id());
+
+				let right_frame = ui.build_widget(
+					WidgetProps::new(wk!())
+						.with_size(WidgetSize::fill())
+						.with_layout(WidgetLayout::flex(FlexDirection::Vertical, 2)),
+				);
+				{
+					let text_holder = ui.build_widget(WidgetProps::new(wk!()).with_size(WidgetSize::fill()));
+					{
+						let text = ui.build_widget(
+							WidgetProps::text(wk!(), renderer.text("Speykious"))
+								.with_anchor_origin(Anchor::BOTTOM_LEFT, Anchor::BOTTOM_LEFT)
+								.with_mask_and(Some(SNAEK_BLACK)),
+						);
+						ui.add_child(text_holder.id(), text.id());
+					}
+					ui.add_child(right_frame.id(), text_holder.id());
+
+					let time_display = ui.time_display(
+						wk!(),
+						snake_game.duration(),
+						snaek_sheet_id,
+						snaek_sheet.box_num_display,
+						snaek_sheet.num_colon,
+						&snaek_sheet.nums,
+					);
+					ui.add_child(right_frame.id(), time_display.id());
+				}
+				ui.add_child(display_frame.id(), right_frame.id());
+			}
+			ui.add_child(game_frame.id(), display_frame.id());
+
+			let playfield = ui.build_widget(
+				WidgetProps::nine_slice_sprite(wk!(), snaek_sheet_id, snaek_sheet.box_playfield)
+					.with_size(WidgetSize::hug())
+					.with_padding(WidgetPadding::all(4)),
+			);
+			{
+				let container_size = snake_game.size() * 7;
+
+				let snake_container = ui.build_widget(
+					WidgetProps::new(wk!())
+						.with_flags(WidgetFlags::DRAW_BACKGROUND)
+						.with_color(Color::from_hex(0xff262b44))
+						.with_size(WidgetSize::fixed(container_size.w, container_size.h)),
+				);
+				{
+					snaek_playfield(
+						snake_game,
+						ui,
+						renderer,
+						snake_container.id(),
+						snaek_sheet_id,
+						snaek_sheet,
+						*debug,
+						show_game_over,
+					);
+				}
+				ui.add_child(playfield.id(), snake_container.id());
+			}
+			ui.add_child(game_frame.id(), playfield.id());
+		}
+		ui.add_child(window_frame.id(), game_frame.id());
+	}
+
+	window.set_cursor(cursor_icon);
+	false
 }
 
 #[allow(clippy::too_many_arguments)]
-fn draw_snake_game(
+fn snaek_playfield(
 	snake_game: &SnakeGame,
 	ui: &mut UiContext,
 	renderer: &Renderer,
