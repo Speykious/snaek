@@ -143,7 +143,7 @@ impl App {
 }
 
 impl ApplicationHandler for App {
-	fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+	fn can_create_surfaces(&mut self, event_loop: &ActiveEventLoop) {
 		let win_attribs = WindowAttributes::default()
 			.with_active(true)
 			.with_transparent(false)
