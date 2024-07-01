@@ -753,6 +753,12 @@ pub struct Mouse {
 
 #[allow(unused)]
 impl Mouse {
+	pub fn reset_pressed(&mut self) {
+		self.l_pressed = (false, false);
+		self.r_pressed = (false, false);
+		self.m_pressed = (false, false);
+	}
+
 	#[inline]
 	pub const fn l_pressed(&self) -> bool {
 		self.l_pressed.0

@@ -215,8 +215,11 @@ impl ApplicationHandler for App {
 				_ => {}
 			},
 
-			WindowEvent::Resized(physical_size @ PhysicalSize { width, height }) => {
-				self.window_size = physical_size;
+			WindowEvent::Resized(PhysicalSize { width, height }) => {
+				let width = width.max(WIDTH as u32 * self.pixel_size);
+				let height = height.max(HEIGHT as u32 * self.pixel_size);
+
+				self.window_size = PhysicalSize { width, height };
 
 				let viewport_size = size((width / self.pixel_size) as u16, (height / self.pixel_size) as u16);
 
@@ -281,7 +284,9 @@ impl ApplicationHandler for App {
 						for x in 0..width {
 							let dst_index = y * width + x;
 							let src_index = (y / pxsz) * (width / pxsz) + (x / pxsz);
-							buffer[dst_index] = fb[src_index];
+							if let (Some(dst_pixel), Some(src_pixel)) = (buffer.get_mut(dst_index), fb.get(src_index)) {
+								*dst_pixel = *src_pixel;
+							};
 						}
 					}
 
@@ -376,6 +381,7 @@ fn snaek_ui(app: &mut App, window: &Window) -> bool {
 		if navbar.start_pressed() {
 			cursor_icon = CursorIcon::Grabbing;
 			window.drag_window().unwrap();
+			app.mouse.reset_pressed();
 		}
 
 		let game_frame = ui.build_widget(
