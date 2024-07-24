@@ -11,7 +11,7 @@ rand = "0.8.5"
 softbuffer = "0.4.5"
 
 # I implemented smooth resizing on X11
-winit = { git = "https://github.com/Speykious/winit", rev = "4981fb1" }
+winit = { git = "https://github.com/Speykious/winit", rev = "a0bc3e5", default-features = false, features = ["rwh_06", "x11", "wayland-dlopen"] }
 
 # Make target file smaller by not generating debug symbols
 [profile.dev.package."*"]
