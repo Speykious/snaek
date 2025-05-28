@@ -253,7 +253,7 @@ impl ApplicationHandler for App {
 				let now = Instant::now();
 				self.snake_game.update_duration();
 
-				if (now - self.last_move).as_secs_f64() >= 0.3 {
+				if (now - self.last_move).as_secs_f64() >= (1.0 / self.snake_game.speed() as f64) {
 					let was_dead = self.snake_game.is_dead();
 
 					self.snake_game.change_direction(self.next_direction);

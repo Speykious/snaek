@@ -57,6 +57,7 @@ pub struct SnakeGame {
 	snake_head: Pos,
 	snake_tail: Pos,
 	bananas_eaten: u32,
+	speed: f32,
 	direction: Direction,
 	ate_banana: bool,
 	is_dead: bool,
@@ -83,6 +84,7 @@ impl SnakeGame {
 			direction: Direction::Right,
 			ate_banana: false,
 			is_dead: false,
+			speed: 3.0,
 
 			start: Instant::now(),
 			duration: Duration::default(),
@@ -145,6 +147,7 @@ impl SnakeGame {
 			// eat banana
 			next_slot.set_banana(None);
 			self.bananas_eaten += 1;
+			self.speed += 0.1;
 
 			self.place_banana();
 		} else {
@@ -196,6 +199,7 @@ impl SnakeGame {
 		tail_slot.set_snake_tail();
 
 		self.bananas_eaten = 0;
+		self.speed = 3.0;
 		self.direction = Direction::Right;
 		self.is_dead = false;
 
@@ -244,6 +248,10 @@ impl SnakeGame {
 
 	pub fn bananas_eaten(&self) -> u32 {
 		self.bananas_eaten
+	}
+
+	pub fn speed(&self) -> f32 {
+		self.speed
 	}
 
 	pub fn direction(&self) -> Direction {
